@@ -13,7 +13,7 @@ Displays failed login attempts grouped by hour across a 24-hour window. A single
 **SPL Query:**
 
 ```
-index=main EventCode=4625 earliest=-1d@d latest=@d | timechart span=1h count
+index=main EventCode=4625 | timechart span=1h count
 ```
 
 ![Failed Logins Over Time](screenshots/dashboard-01-panel-01-failed-logins-over-time.png)
@@ -27,7 +27,7 @@ Ranks source IP addresses by total failed login count. A single IP responsible f
 **SPL Query:**
 
 ```
-index=main EventCode=4625 earliest=-1d@d latest=@d | stats count by Source_Network_Address | sort -count
+index=main EventCode=4625 | stats count by Source_Network_Address | sort -count
 ```
 
 ![Top Source IPs Generating Failed Logins](screenshots/dashboard-01-panel-02-top-source-ips.png)
@@ -41,8 +41,7 @@ Shows which accounts are being targeted most frequently. Attackers commonly targ
 **SPL Query:**
 
 ```
-index=main EventCode=4625 earliest=-1d@d latest=@d | stats count by Account_Name | search Account_Name=administrator
+index=main EventCode=4625 | stats count by Account_Name | search Account_Name!="-" | sort -count
 ```
 
 ![Top Targeted Accounts](screenshots/dashboard-01-panel-03-top-targeted-accounts.png)
-
