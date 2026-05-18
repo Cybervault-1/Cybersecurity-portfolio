@@ -22,7 +22,7 @@ The objective of this simulation was to perform a brute force attack against the
 
 | Role | Machine | IP Address | OS |
 | --- | --- | --- | --- |
-| Attacker | Kali Linux | 192.168.10.20 | Kali Linux 2024.4 |
+| Attacker | Kali Linux | 192.168.10.20 | Kali Linux 2025.4 |
 | Target | NEXACORE-WS01 | 192.168.10.10 | Windows Server 2019 |
 | Domain Controller | NexaCore-DC01 | 192.168.10.1 | Windows Server 2019 |
 | SIEM | Splunk Enterprise | 192.168.56.1 | Host Machine |
