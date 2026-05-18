@@ -4,27 +4,43 @@
 
 The NexaCore SOC homelab runs on a Windows laptop using VirtualBox, with Splunk Enterprise installed directly on the host machine at 192.168.56.1 to act as the central SIEM for the entire environment.
 
-The screenshot below confirms all three virtual machines were running simultaneously during the lab build and testing phase.
+The diagram below shows the full network architecture including machine roles, IP addressing, network adapters, attack flow and log forwarding flow.
 
-![VirtualBox VMs Running](screenshots/infra-01-virtualbox-vms.png)
+![NexaCore SOC Homelab Architecture](screenshots/nexacore-architecture-diagram.png)
+
+---
 
 ## Virtual Machines and Roles
 
-The lab contains three virtual machines. NEXACORE-WS01 is the primary target endpoint representing an employee workstation in a corporate environment. The Domain Controller NexaCore-DC01 manages user authentication and Active Directory services for the NexaCore domain. Kali Linux serves as the attacker machine used to simulate real world attacks against the Windows environment.
+| Machine | Role | OS | Internal IP | Host-Only IP |
+| --- | --- | --- | --- | --- |
+| Host Laptop | Splunk SIEM | Windows 10 | N/A | 192.168.56.1 |
+| NEXACORE-WS01 | Target Endpoint | Windows Server 2019 | 192.168.10.10 | 192.168.56.30 |
+| NexaCore-DC01 | Domain Controller | Windows Server 2019 | 192.168.10.1 | 192.168.56.10 |
+| Kali Linux | Attacker | Kali Linux 2025.4 | 192.168.10.20 | N/A |
+
+---
 
 ## Network Design
 
-Network segmentation was achieved using two VirtualBox adapter types. The Host-Only adapter connects NEXACORE-WS01 and NexaCore-DC01 directly to the host machine, allowing the Splunk Universal Forwarder on each machine to ship logs to Splunk Enterprise. The Internal Network adapter connects all three VMs together in an isolated environment named NexaCoreNet, allowing attack simulation while preventing exposure to the real network. Kali uses a NAT adapter for internet access to download attack tools.
+Two VirtualBox adapter types were used to segment the network.
+
+The **Host-Only adapter** connects NEXACORE-WS01 and NexaCore-DC01 to the host machine, allowing the Splunk Universal Forwarder on each machine to ship logs to Splunk Enterprise over the 192.168.56.0/24 range.
+
+The **Internal Network adapter** connects all three virtual machines together in an isolated environment named NexaCoreNet on the 192.168.10.0/24 range. This allows attack simulations to run between Kali and the Windows machines while keeping all attack traffic off the real network.
+
+Kali Linux uses a NAT adapter for internet access to download tools.
+
+---
 
 ## Log Forwarding
 
-The Splunk Universal Forwarder is installed on both NEXACORE-WS01 and NexaCore-DC01 because both machines generate critical security events including authentication logs, Sysmon activity and Active Directory events that are essential for detection and investigation.
+The Splunk Universal Forwarder is installed on both NEXACORE-WS01 and NexaCore-DC01. Both machines generate critical security events including Windows Security logs, Sysmon activity and Active Directory authentication events that are forwarded to Splunk Enterprise on port 9997 for centralised monitoring and detection.
 
-## Network Diagram
+---
 
-| Machine | Role | Host-Only IP | Internal Network IP |
-|---|---|---|---|
-| Host Laptop | Splunk SIEM | 192.168.56.1 | N/A |
-| NEXACORE-WS01 | Primary endpoint | 192.168.56.30 | 192.168.10.10 |
-| NexaCore-DC01 | Domain Controller | 192.168.56.10 | 192.168.10.1 |
-| Kali Linux | Attacker | N/A | 192.168.10.20 |
+## Screenshots
+
+The following screenshot confirms all three virtual machines were running simultaneously during the lab build and testing phase.
+
+![VirtualBox VMs Running](screenshots/infra-01-virtualbox-vms.png)
