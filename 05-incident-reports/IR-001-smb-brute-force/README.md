@@ -1,24 +1,32 @@
 # Incident Report — IR-001: SMB Brute Force Attack
 
-**Date:** 15 May 2026
-**Analyst:** Adedeji Adetayo
-**Severity:** High
-**Status:** Resolved
+## Incident Metadata
+
+| Field | Detail |
+| --- | --- |
+| Incident ID | IR-001 |
+| Date | 18 May 2026 |
+| Analyst | Adedeji Adetayo |
+| Severity | High |
+| Status | Resolved |
+| MITRE ATT&CK | T1110.001 — Password Guessing |
+| Linked Simulation | [SIM-01 — SMB Brute Force](../../03-attack-simulations/sim-01-smb-brute-force/README.md) |
+| Linked Detection | [DET-01 — SMB Brute Force](../../04-detections/detection-01-brute-force/README.md) |
 
 ---
 
 ## Executive Summary
 
-On 15 May 2026 an unauthorised machine attempted to gain access to the NexaCore employee workstation by repeatedly trying common passwords against the administrator account. All 8 attempts failed and no accounts or systems were compromised. The attack was detected through Splunk monitoring, the source IP was identified and remediation steps have been implemented including firewall restrictions and automated alerting to prevent recurrence.
+On 18 May 2026 an unauthorised machine at 192.168.10.20 attempted to gain access to the NexaCore workstation NEXACORE-WS01 by repeatedly attempting authentication against the administrator account over SMB. All 8 attempts failed and no accounts or systems were compromised. The attack was detected through Splunk monitoring using Event ID 4625, the source IP was identified and the incident was investigated and resolved.
 
 ---
 
 ## Incident Details
 
 | Field | Detail |
-|---|---|
+| --- | --- |
 | Incident ID | IR-001 |
-| Date and Time | 15 May 2026, 17:57:38 to 17:57:40 |
+| Date and Time | 18 May 2026, 14:03:49 to 14:03:50 |
 | Attack Type | SMB Brute Force |
 | MITRE ATT&CK | T1110.001 — Password Guessing |
 | Attacker IP | 192.168.10.20 |
@@ -34,24 +42,25 @@ On 15 May 2026 an unauthorised machine attempted to gain access to the NexaCore 
 ## Timeline of Events
 
 | Time | Event |
-|---|---|
-| 17:57:38.423 | First failed login attempt detected on NEXACORE-WS01 |
-| 17:57:38.736 | Second failed attempt from 192.168.10.20 |
-| 17:57:38.899 | Third failed attempt |
-| 17:57:39.145 | Fourth failed attempt |
-| 17:57:39.383 | Fifth failed attempt |
-| 17:57:39.580 | Sixth failed attempt |
-| 17:57:39.846 | Seventh failed attempt |
-| 17:57:40.076 | Eighth and final failed attempt |
-| Post-attack | Attack detected in Splunk via Event ID 4625 monitoring |
-| Post-attack | Source IP identified, investigation completed, remediation applied |
+| --- | --- |
+| 14:03:49.892 | First failed login attempt recorded on NEXACORE-WS01 from 192.168.10.20 |
+| 14:03:50.025 | Second failed attempt |
+| 14:03:50.091 | Third failed attempt |
+| 14:03:50.164 | Fourth failed attempt |
+| 14:03:50.238 | Fifth failed attempt |
+| 14:03:50.332 | Sixth failed attempt |
+| 14:03:50.443 | Seventh failed attempt |
+| 14:03:50.529 | Eighth and final failed attempt |
+| Post-attack | All 8 events forwarded to Splunk via Universal Forwarder |
+| Post-attack | Attack detected via Event ID 4625 threshold alert |
+| Post-attack | Source IP identified, investigation completed, incident resolved |
 
 ---
 
 ## Affected Systems
 
 | Machine | Role | Impact |
-|---|---|---|
+| --- | --- | --- |
 | NEXACORE-WS01 | Primary target endpoint | Targeted but not compromised |
 | NexaCore-DC01 | Domain Controller | Authentication requests forwarded, no compromise |
 | Splunk Enterprise | SIEM | Successfully detected the attack |
@@ -60,74 +69,78 @@ On 15 May 2026 an unauthorised machine attempted to gain access to the NexaCore 
 
 ## Attack Description
 
-The attacker used a tool called smbclient to repeatedly attempt authentication against the administrator account on NEXACORE-WS01 over the SMB protocol on port 445. A custom list of commonly used weak passwords was cycled through in rapid succession, with all 8 attempts completing within 2 seconds. This speed and pattern is characteristic of automated brute force tooling rather than a human manually typing passwords.
+The attacker used smbclient running on Kali Linux to repeatedly attempt authentication against the administrator account on NEXACORE-WS01 over the SMB protocol on port 445. A custom wordlist of commonly used weak passwords was cycled through in rapid succession with all 8 attempts completing within under 1 second. This speed and pattern is characteristic of automated brute force tooling.
 
-The attack exploited two security gaps. First, no account lockout policy was configured on NEXACORE-WS01, meaning Windows allowed unlimited failed login attempts without locking the account. Second, port 445 was accessible from the attacker machine without any firewall restriction, giving the attacker unrestricted access to the SMB service.
+The attack was made possible by two security gaps. No account lockout policy was configured on NEXACORE-WS01, meaning Windows permitted unlimited failed login attempts without locking the targeted account. Additionally port 445 was accessible from the attacker machine without firewall restriction, providing unrestricted access to the SMB service.
 
 ---
 
 ## Detection
 
-The attack was detected in Splunk using the following SPL query which monitors for failed login events on NEXACORE-WS01:
+The attack was detected in Splunk through the DET-01 threshold detection which monitors for Event ID 4625 failed login events. The detection query grouped failed logins by source IP and flagged any IP exceeding 5 failures within 15 minutes.
 
-    index=main host=NEXACORE-WS01 EventCode=4625 earliest=-15m
+```
+index=main EventCode=4625 earliest=-15m | stats count by Source_Network_Address | where count > 5
+```
 
-The query returned 8 Event ID 4625 entries, all originating from 192.168.10.20 within a 2 second window. The rapid succession of failures from a single source IP with no successful login confirmed automated brute force activity.
+The query returned 192.168.10.20 with a count of 8, exceeding the threshold and triggering the alert. The rapid succession of 8 failures from a single external IP with no successful login confirmed automated brute force activity.
 
-![Detection Screenshot](../../03-attack-simulations/sim-01-smb-brute-force/screenshots/01-brute-force-4625-splunk-detection.png)
+![Detection Results](screenshots/IR-001-detection-results.png)
 
 ---
 
 ## Investigation Findings
 
-The following fields were examined across all 8 Event ID 4625 entries to confirm the nature and scope of the attack:
+All 8 Event ID 4625 entries were examined in Splunk. The following fields were extracted and analysed to confirm the nature and scope of the attack.
 
 | Field | Value | Significance |
-|---|---|---|
-| Account_Name | administrator | The most privileged account on the machine was targeted |
-| Logon_Type | 3 — Network | Confirms the attack came remotely over the network |
-| Failure_Reason | Unknown user name or bad password | Wrong password on every attempt confirming brute force |
-| Source_Network_Address | 192.168.10.20 | Identifies the attacker machine |
-| Workstation_Name | KALI | Confirms the name of the attacker machine |
+| --- | --- | --- |
+| Account_Name | administrator | The highest privilege account on the machine was targeted |
+| Logon_Type | 3 — Network | The attempt originated remotely over the network |
+| Failure_Reason | Unknown user name or bad password | Incorrect credentials on every attempt confirming brute force |
+| Source_Network_Address | 192.168.10.20 | The Kali Linux attacker machine |
+| Workstation_Name | KALI | Confirms the attacker machine name |
 
-No successful logins were recorded from 192.168.10.20 at any point before, during or after the attack window. The administrator account was not compromised.
+A follow-on check against Event ID 4624 confirmed that 192.168.10.20 recorded no successful logins before, during or after the attack window. The administrator account was not compromised.
 
-![Investigation Table](../../03-attack-simulations/sim-01-smb-brute-force/screenshots/07-brute-force-detection-table.png)
+![Investigation Table](screenshots/IR-001-investigation-table.png)
 
 ---
 
 ## Root Cause
 
-The attack was possible due to two misconfigurations on NEXACORE-WS01:
+Two misconfigurations on NEXACORE-WS01 allowed the attack to proceed without interruption:
 
-**No account lockout policy** — Windows was configured to allow unlimited failed login attempts. A proper lockout policy would have stopped the attack after 5 failed attempts.
+**No account lockout policy** — Windows was configured to permit unlimited failed login attempts. A lockout policy set to 5 failed attempts within 10 minutes would have blocked the attack after the fifth attempt.
 
-**Unrestricted SMB access** — Port 445 was reachable from the attacker machine without any firewall restriction. Limiting SMB access to only authorised machines would have prevented the connection entirely.
+**Unrestricted SMB access** — Port 445 was reachable from the attacker machine without firewall restriction. Restricting SMB access to only authorised hosts would have prevented the connection entirely.
 
 ---
 
 ## Remediation Actions Taken
 
-**Account lockout policy** — Configure Windows to lock the administrator account after 5 failed login attempts within 10 minutes, making automated brute force attacks impractical.
+**Splunk alert configured** — A scheduled alert named NexaCore — SMB Brute Force Detection was created in Splunk. The alert runs every 5 minutes, evaluates the last 15 minutes of Event ID 4625 data and fires when any source IP exceeds 5 failures within that window. Throttle is set to 10 minutes to prevent duplicate alerts for the same incident.
 
-**Firewall rules** — Restrict access to port 445 so only machines that legitimately require SMB access can reach NEXACORE-WS01.
+**Account lockout policy recommended** — A Group Policy Object should be configured to lock accounts after 5 failed attempts within 10 minutes with a 30 minute lockout duration. This was identified as a critical gap during this incident.
 
-**Splunk alert created** — A scheduled alert has been configured to fire automatically when more than 5 Event ID 4625 failures are detected from the same source IP within 5 minutes, ensuring future attacks are caught in real time.
+**Firewall restriction recommended** — Access to port 445 on NEXACORE-WS01 should be restricted to only machines that require SMB connectivity. Kali Linux at 192.168.10.20 should have no legitimate reason to reach this port.
 
-**Administrator account hardening** — The built-in administrator account should be renamed to a non-obvious name to prevent attackers from knowing which account to target.
+**Administrator account hardening recommended** — The built-in administrator account should be renamed to a non-obvious name to remove a predictable target for brute force attacks.
 
 ---
 
 ## Lessons Learned
 
-This incident highlighted that even a failed attack reveals important security gaps. The attacker was unable to gain access but the absence of an account lockout policy meant they could attempt as many passwords as they wanted without consequence. In a real enterprise environment with a larger password list this attack could have succeeded.
+The incident confirmed that a failed brute force attack still reveals significant security gaps. The attacker made 8 attempts without any automated interruption because no lockout policy was in place. In a production environment with a larger password list such as rockyou.txt this attack could have succeeded.
 
-Detection through Splunk was effective. The 8 failed logins were identified immediately using Event ID 4625 monitoring and the attacker IP was traced within minutes of the attack completing. This confirms the value of proper audit policy configuration and centralised log monitoring.
+Splunk detection performed as expected. The 8 failed logins were captured by Event ID 4625 monitoring, grouped by source IP and surfaced within the alert window. The attacker IP was identified and the investigation was completed without ambiguity. This validates the value of threshold-based detection over simple event counting.
 
 ---
 
 ## References
 
-- [Attack Simulation Write-up](../../03-attack-simulations/sim-01-smb-brute-force/README.md)
-- [Detection Write-up](../../04-detections/detection-01-brute-force/README.md)
+- [Attack Simulation SIM-01](../../03-attack-simulations/sim-01-smb-brute-force/README.md)
+- [Detection DET-01](../../04-detections/detection-01-brute-force/README.md)
 - [MITRE ATT&CK T1110.001](https://attack.mitre.org/techniques/T1110/001/)
+- [Microsoft Event ID 4625](https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4625)
+- [Microsoft Event ID 4624](https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4624)
