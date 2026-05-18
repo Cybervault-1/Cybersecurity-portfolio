@@ -83,7 +83,7 @@ The attack was detected in Splunk through the DET-01 threshold detection which m
 index=main EventCode=4625 earliest=-15m | stats count by Source_Network_Address | where count > 5
 ```
 
-The query returned 192.168.10.20 with a count of 8, exceeding the threshold and triggering the alert. The rapid succession of 8 failures from a single external IP with no successful login confirmed automated brute force activity.
+The query returned 192.168.10.20 with a count of 8, exceeding the threshold and confirming automated brute force activity from a single external source with no successful login recorded.
 
 ![Detection Results](screenshots/IR-001-detection-results.png)
 
@@ -109,7 +109,7 @@ A follow-on check against Event ID 4624 confirmed that 192.168.10.20 recorded no
 
 ## Root Cause
 
-Two misconfigurations on NEXACORE-WS01 allowed the attack to proceed without interruption:
+Two misconfigurations on NEXACORE-WS01 allowed the attack to proceed without interruption.
 
 **No account lockout policy** — Windows was configured to permit unlimited failed login attempts. A lockout policy set to 5 failed attempts within 10 minutes would have blocked the attack after the fifth attempt.
 
@@ -123,9 +123,9 @@ Two misconfigurations on NEXACORE-WS01 allowed the attack to proceed without int
 
 **Account lockout policy recommended** — A Group Policy Object should be configured to lock accounts after 5 failed attempts within 10 minutes with a 30 minute lockout duration. This was identified as a critical gap during this incident.
 
-**Firewall restriction recommended** — Access to port 445 on NEXACORE-WS01 should be restricted to only machines that require SMB connectivity. Kali Linux at 192.168.10.20 should have no legitimate reason to reach this port.
+**Firewall restriction recommended** — Access to port 445 on NEXACORE-WS01 should be restricted to only machines that require SMB connectivity.
 
-**Administrator account hardening recommended** — The built-in administrator account should be renamed to a non-obvious name to remove a predictable target for brute force attacks.
+**Administrator account hardening recommended** — The built-in administrator account should be renamed to a non-obvious name to remove a predictable target for credential guessing attacks.
 
 ---
 
