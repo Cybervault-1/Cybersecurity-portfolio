@@ -47,15 +47,15 @@ Without these in place Event ID 4625 will not be generated or will not reach Spl
 
 ## Detection Logic
 
-A single failed login is normal. A user mistyping their password generates one or two Event ID 4625 entries and then successfully logs in. What is not normal is seeing the same source IP generating more than 5 failed logins within a short window with no successful login at any point.
+A single failed login is normal. A user mistyping their password generates one or two Event ID 4625 entries followed by a successful login. What distinguishes brute force activity is a sustained pattern of failures from the same source IP within a short window with no successful login recorded at any point.
 
-That pattern is what this detection looks for. The moment more than 5 Event ID 4625 events appear from one source IP within 15 minutes the alert fires and the analyst investigates.
+This detection surfaces that pattern by grouping failed login events by source IP and applying a count threshold. Any IP exceeding 5 failures within 15 minutes is considered suspicious and warrants investigation.
 
 ---
 
 ## Threshold Detection Query
 
-This query groups failed logins by source IP and only surfaces IPs that have exceeded the threshold of 5 failures. This is the query the Splunk alert runs every 5 minutes. Any IP returning a count above 5 is flagged for immediate investigation.
+This query groups failed logins by source IP and surfaces only those exceeding the threshold of 5 failures. The Splunk alert runs this query every 5 minutes against the last 15 minutes of log data.
 
 ```
 index=main EventCode=4625 earliest=-15m | stats count by Source_Network_Address | where count > 5
@@ -65,11 +65,11 @@ index=main EventCode=4625 earliest=-15m | stats count by Source_Network_Address 
 | --- | --- |
 | index=main | Opens the main log storage bucket where all endpoint logs are kept |
 | EventCode=4625 | Windows Security event for a failed logon attempt |
-| earliest=-15m | Only shows events from the last 15 minutes |
+| earliest=-15m | Scopes the search to the last 15 minutes of data |
 | stats count by Source_Network_Address | Groups failed logins by source IP and counts them |
-| where count > 5 | Only returns IPs that have exceeded the threshold |
+| where count > 5 | Filters to only IPs that have exceeded the threshold |
 
-The query returned 192.168.10.20 with a count of 8, exceeding the threshold of 5 and confirming brute force activity from the Kali Linux attacker machine.
+During SIM-01 validation the query returned 192.168.10.20 with a count of 8, exceeding the threshold of 5 and confirming brute force activity originating from the Kali Linux attacker machine.
 
 ![Threshold Query Result](screenshots/detection-01-threshold-query.png)
 
@@ -77,13 +77,13 @@ The query returned 192.168.10.20 with a count of 8, exceeding the threshold of 5
 
 ## Timechart — Visual Spike Pattern
 
-A timechart helps the analyst see the attack pattern visually. Legitimate failed logins appear as a flat baseline spread randomly over time. A brute force attack generates all its failures within seconds and appears as a sharp isolated spike. This query visualises failed login activity over time grouped by source IP.
+A timechart provides a visual representation of failed login activity over time grouped by source IP. Legitimate failed logins appear as a low flat baseline spread randomly across the timeline. Brute force activity produces a sharp isolated spike as all failures occur within a very short window.
 
 ```
 index=main EventCode=4625 earliest=-15m | timechart span=1m count by Source_Network_Address
 ```
 
-The chart shows a single spike at 2:03 PM on 18 May 2026 from 192.168.10.20. The baseline before and after is completely flat confirming this was an automated attack and not normal user behaviour.
+The chart produced during SIM-01 validation shows a single spike at 2:03 PM on 18 May 2026 from 192.168.10.20 with a completely flat baseline before and after, consistent with automated brute force tooling rather than normal user behaviour.
 
 ![Timechart Spike](screenshots/detection-01-timechart-spike.png)
 
@@ -91,7 +91,7 @@ The chart shows a single spike at 2:03 PM on 18 May 2026 from 192.168.10.20. The
 
 ## Investigation Query
 
-Once the threshold query fires use this query to build a complete picture of who was targeted, from where and how many times. This query is dynamic and will surface all source IPs that generated failed logins, not just a hardcoded attacker IP. This ensures the analyst does not miss other active threats in the environment.
+Following a threshold breach this query provides a broader view of all source IPs generating failed logins within the last hour, grouped by account name and workstation. The query is dynamic and not scoped to a specific IP, ensuring all concurrent threats in the environment are surfaced rather than only the known attacker.
 
 ```
 index=main EventCode=4625 earliest=-1h | stats count by Source_Network_Address, Account_Name, Workstation_Name | sort -count
@@ -107,7 +107,7 @@ Each Event ID 4625 entry contains several fields that together build a complete 
 
 ### Account_Name
 
-The Account_Name field identifies which account the attacker was targeting. Attackers almost always target high privilege accounts like administrator because a successful compromise gives them full control of the machine. Seeing the same account name repeated across all failed login events confirms the attacker had a specific target in mind rather than attempting random accounts.
+The Account_Name field identifies the account that was targeted. High privilege accounts such as administrator are the most common targets because a successful compromise yields full system control. A consistent account name appearing across all failed login events indicates the attacker had a specific target rather than cycling through multiple accounts.
 
 ![Account Name](screenshots/02-4625-account-name.png)
 
@@ -115,7 +115,7 @@ The Account_Name field identifies which account the attacker was targeting. Atta
 
 ### Logon_Type
 
-The Logon_Type field identifies how the authentication was attempted. A value of 3 means the attempt came remotely over the network. This tells the analyst the attacker was not physically present at the machine. Any sustained series of Logon_Type 3 failures from an unfamiliar IP should be treated as suspicious and investigated immediately.
+The Logon_Type field identifies the method of authentication used. A value of 3 indicates a network logon, meaning the attempt originated from a remote machine rather than a local interactive session. Repeated network logon failures from an unfamiliar external IP are a reliable indicator of remote brute force activity.
 
 ![Logon Type](screenshots/03-4625-logon-type.png)
 
@@ -123,7 +123,7 @@ The Logon_Type field identifies how the authentication was attempted. A value of
 
 ### Failure_Reason
 
-The Failure_Reason field explains why the login failed. Seeing the same reason repeated across all events with no variation and no successful login confirms automated brute force activity. A genuine user mistake rarely exceeds 2 or 3 attempts and is usually followed by a successful login or a password reset request.
+The Failure_Reason field records why the authentication failed. When the same failure reason appears repeatedly across multiple events from the same source with no successful login, the pattern is consistent with automated credential guessing rather than a genuine user error. Legitimate user mistakes typically result in a small number of failures followed by a successful login or a password reset.
 
 ![Failure Reason](screenshots/04-4625-failure-reason.png)
 
@@ -131,7 +131,7 @@ The Failure_Reason field explains why the login failed. Seeing the same reason r
 
 ### Source_Network_Address
 
-The Source_Network_Address field identifies where the attack came from. This is the most important field for response. In a production environment this IP would be immediately blocked at the firewall, traced to its owner and checked against threat intelligence feeds to determine whether it is a known malicious host.
+The Source_Network_Address field records the IP address from which the authentication attempt originated. This field is central to response, as it identifies the machine responsible for the failed logins and provides the basis for firewall blocking, network tracing and threat intelligence lookups.
 
 ![Source IP](screenshots/05-4625-source-ip.png)
 
@@ -139,23 +139,23 @@ The Source_Network_Address field identifies where the attack came from. This is 
 
 ### Workstation_Name
 
-The Workstation_Name field provides the name of the machine the attacker used. Combined with the Source_Network_Address this gives the analyst two independent pieces of evidence pointing to the same attacker machine, strengthening the case for escalation and response.
+The Workstation_Name field records the hostname of the machine from which the attempt was made. When combined with Source_Network_Address, two independent pieces of evidence point to the same origin, strengthening the confidence of the attribution and supporting escalation decisions.
 
 ![Workstation Name](screenshots/06-4625-workstation-name.png)
 
 ---
 
-## Follow-On Query — Did the Brute Force Succeed?
+## Follow-On Query — Confirming Attack Success or Failure
 
-After confirming brute force activity the analyst must immediately check whether any attempt succeeded. Event ID 4624 is a successful Windows login. If the attacker IP appears in any 4624 events the brute force worked and the incident severity escalates to critical immediately.
+After a brute force threshold breach is confirmed the next step is to determine whether any authentication attempt succeeded. Event ID 4624 records successful Windows logon events. The presence of the attacker IP in 4624 events within the same timeframe as the 4625 failures indicates a compromised account and warrants escalation to Critical severity.
 
-This query checks all successful logins in the last hour and groups them by source IP and account name. If the attacker IP appears here containment must begin immediately.
+The following query returns all successful logins within the last hour grouped by source IP and account name. Any overlap between these results and the source IP identified in the threshold query indicates a successful breach.
 
 ```
 index=main EventCode=4624 earliest=-1h | stats count by Source_Network_Address, Account_Name | sort -count
 ```
 
-In the SIM-01 simulation 192.168.10.20 did not appear in any Event ID 4624 entries confirming the brute force failed completely and no accounts were compromised.
+During the SIM-01 simulation 192.168.10.20 returned no Event ID 4624 entries, confirming the brute force failed completely and no accounts were compromised.
 
 ![Success Check 4624](screenshots/detection-01-success-check-4624.png)
 
@@ -165,17 +165,17 @@ In the SIM-01 simulation 192.168.10.20 did not appear in any Event ID 4624 entri
 
 | Scenario | How To Distinguish From Attack |
 | --- | --- |
-| User genuinely mistyping password | Typically 1 to 3 failures then a successful login. No sustained pattern. |
-| Password sync issue on a service account | Failures come from a known internal IP. Check if the account is a service account. |
-| Automated script with wrong credentials | Similar pattern to brute force but source is an internal trusted IP. Investigate the script. |
+| User genuinely mistyping password | A small number of failures followed by a successful login. No sustained pattern from the same IP. |
+| Password sync issue on a service account | Failures originate from a known internal IP associated with a service account rather than an external or unfamiliar host. |
+| Automated script with wrong credentials | Pattern resembles brute force but the source is a known internal trusted IP. The script rather than an external attacker is the likely cause. |
 
-Tune the threshold higher if false positives occur frequently in your environment. In a production SOC start at 10 failures before adjusting down based on observed baseline behaviour.
+The threshold value of 5 failures can be adjusted based on observed baseline behaviour in the environment. Higher thresholds reduce false positive rates but increase the risk of missing lower volume attacks.
 
 ---
 
 ## Splunk Alert Configuration
 
-A scheduled alert has been configured in Splunk to fire automatically when the threshold is breached. The alert runs silently in the background every 5 minutes and only notifies the analyst when a real threshold breach is detected.
+A scheduled alert has been configured in Splunk to fire automatically when the threshold is breached. The alert runs every 5 minutes and remains silent until a genuine threshold breach is detected.
 
 | Setting | Value |
 | --- | --- |
@@ -195,9 +195,9 @@ A scheduled alert has been configured in Splunk to fire automatically when the t
 
 ## Limitations
 
-- This detection covers failed logins across all hosts forwarding to Splunk but requires the Universal Forwarder to be running on the target. If the forwarder goes down events will not reach Splunk and the detection will be blind.
-- The detection does not automatically correlate 4625 failures with subsequent 4624 successes. The follow-on check is currently a manual step.
-- Attackers who deliberately slow their brute force attempts below the threshold rate will evade this detection. A low and slow attack generating 2 to 3 failures per hour would not trigger the alert.
+- This detection requires the Splunk Universal Forwarder to be running on the target endpoint. If the forwarder is offline events will not reach Splunk and the detection will produce no results.
+- Correlation between 4625 failures and subsequent 4624 successes is not automated. The follow-on check is a manual investigation step.
+- Attackers using low and slow techniques that deliberately keep their failure rate below the threshold will not trigger this detection.
 
 ---
 
