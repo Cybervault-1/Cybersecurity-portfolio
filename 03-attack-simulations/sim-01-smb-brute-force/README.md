@@ -5,10 +5,12 @@
 | Field | Detail |
 | --- | --- |
 | Simulation ID | SIM-01 |
-| Date | 15 May 2026 |
+| Date | 18 May 2026 |
 | Author | Adedeji Adetayo |
 | Status | Complete |
 | MITRE Technique | T1110.001 — Password Guessing |
+| Linked Detection | [DET-01 — SMB Brute Force](../../04-detections/detection-01-brute-force/README.md) |
+| Linked Incident Report | [IR-001 — SMB Brute Force](../../05-incident-reports/IR-001-smb-brute-force/README.md) |
 
 ---
 
