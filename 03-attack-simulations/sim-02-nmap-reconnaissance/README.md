@@ -53,6 +53,8 @@ The following configuration was applied to NEXACORE-WS01 before the simulation t
 | Windows Filtering Platform auditing enabled | The command `auditpol /set /subcategory:"Filtering Platform Connection" /success:enable /failure:enable` was run on NEXACORE-WS01. This instructs Windows to write Event ID 5156 to the Security log every time the firewall permits an inbound connection. Without this setting Nmap scan traffic would pass through silently with no log evidence. |
 | Splunk Universal Forwarder running | The forwarder was confirmed running and shipping Windows Security logs to Splunk before the scan was launched. |
 
+The following screenshot confirms that the Filtering Platform Connection audit policy was successfully enabled on NEXACORE-WS01 before the simulation was run.
+
 ![Audit Policy Enabled](screenshots/02-nmap-recon-auditpol-enabled.png)
 
 ---
