@@ -26,7 +26,7 @@ This simulation replicates the reconnaissance phase of a real attack. Before lau
 
 | Role | Machine | IP Address | OS |
 | --- | --- | --- | --- |
-| Attacker | Kali Linux | 192.168.10.20 | Kali Linux 2024.4 |
+| Attacker | Kali Linux | 192.168.10.20 | Kali Linux 2025.4 |
 | Target | NEXACORE-WS01 | 192.168.10.10 | Windows Server 2019 |
 | Domain Controller | NexaCore-DC01 | 192.168.10.1 | Windows Server 2019 |
 | SIEM | Splunk Enterprise | 192.168.56.1 | Host Machine |
