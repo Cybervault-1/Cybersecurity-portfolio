@@ -33,12 +33,12 @@ This detection identifies brute force authentication attempts against Windows ma
 
 ## Data Source Requirements
 
-For this detection to work the following must be configured on the target endpoint:
+For this detection to function the following must be configured on the target endpoint:
 
 | Requirement | Detail |
 | --- | --- |
 | Windows Security Auditing | Audit Logon Failures must be enabled under Security Settings — Advanced Audit Policy — Logon/Logoff |
-| Splunk Universal Forwarder | Must be installed and running on the target endpoint and forwarding Security logs to Splunk |
+| Splunk Universal Forwarder | Must be installed and running on the target endpoint and forwarding Windows Security logs to Splunk |
 | Splunk Index | Logs must be landing in the main index |
 
 Without these in place Event ID 4625 will not be generated or will not reach Splunk and the detection will produce no results.
@@ -89,78 +89,6 @@ The chart produced during SIM-01 validation shows a single spike at 2:03 PM on 1
 
 ---
 
-## Investigation Query
-
-Following a threshold breach this query provides a broader view of all source IPs generating failed logins within the last hour, grouped by account name and workstation. The query is dynamic and not scoped to a specific IP, ensuring all concurrent threats in the environment are surfaced rather than only the known attacker.
-
-```
-index=main EventCode=4625 earliest=-1h | stats count by Source_Network_Address, Account_Name, Workstation_Name | sort -count
-```
-
----
-
-## Key Fields To Examine
-
-Each Event ID 4625 entry contains several fields that together build a complete picture of the attack. The following fields were examined across the events captured during the SIM-01 simulation.
-
----
-
-### Account_Name
-
-The Account_Name field identifies the account that was targeted. High privilege accounts such as administrator are the most common targets because a successful compromise yields full system control. A consistent account name appearing across all failed login events indicates the attacker had a specific target rather than cycling through multiple accounts.
-
-![Account Name](screenshots/02-4625-account-name.png)
-
----
-
-### Logon_Type
-
-The Logon_Type field identifies the method of authentication used. A value of 3 indicates a network logon, meaning the attempt originated from a remote machine rather than a local interactive session. Repeated network logon failures from an unfamiliar external IP are a reliable indicator of remote brute force activity.
-
-![Logon Type](screenshots/03-4625-logon-type.png)
-
----
-
-### Failure_Reason
-
-The Failure_Reason field records why the authentication failed. When the same failure reason appears repeatedly across multiple events from the same source with no successful login, the pattern is consistent with automated credential guessing rather than a genuine user error. Legitimate user mistakes typically result in a small number of failures followed by a successful login or a password reset.
-
-![Failure Reason](screenshots/04-4625-failure-reason.png)
-
----
-
-### Source_Network_Address
-
-The Source_Network_Address field records the IP address from which the authentication attempt originated. This field is central to response, as it identifies the machine responsible for the failed logins and provides the basis for firewall blocking, network tracing and threat intelligence lookups.
-
-![Source IP](screenshots/05-4625-source-ip.png)
-
----
-
-### Workstation_Name
-
-The Workstation_Name field records the hostname of the machine from which the attempt was made. When combined with Source_Network_Address, two independent pieces of evidence point to the same origin, strengthening the confidence of the attribution and supporting escalation decisions.
-
-![Workstation Name](screenshots/06-4625-workstation-name.png)
-
----
-
-## Follow-On Query — Confirming Attack Success or Failure
-
-After a brute force threshold breach is confirmed the next step is to determine whether any authentication attempt succeeded. Event ID 4624 records successful Windows logon events. The presence of the attacker IP in 4624 events within the same timeframe as the 4625 failures indicates a compromised account and warrants escalation to Critical severity.
-
-The following query returns all successful logins within the last hour grouped by source IP and account name. Any overlap between these results and the source IP identified in the threshold query indicates a successful breach.
-
-```
-index=main EventCode=4624 earliest=-1h | stats count by Source_Network_Address, Account_Name | sort -count
-```
-
-During the SIM-01 simulation 192.168.10.20 returned no Event ID 4624 entries, confirming the brute force failed completely and no accounts were compromised.
-
-![Success Check 4624](screenshots/detection-01-success-check-4624.png)
-
----
-
 ## False Positive Analysis
 
 | Scenario | How To Distinguish From Attack |
@@ -196,7 +124,7 @@ A scheduled alert has been configured in Splunk to fire automatically when the t
 ## Limitations
 
 - This detection requires the Splunk Universal Forwarder to be running on the target endpoint. If the forwarder is offline events will not reach Splunk and the detection will produce no results.
-- Correlation between 4625 failures and subsequent 4624 successes is not automated. The follow-on check is a manual investigation step.
+- Correlation between 4625 failures and subsequent 4624 successes is not automated. Confirming whether a brute force attempt succeeded requires a separate manual investigation step.
 - Attackers using low and slow techniques that deliberately keep their failure rate below the threshold will not trigger this detection.
 
 ---
