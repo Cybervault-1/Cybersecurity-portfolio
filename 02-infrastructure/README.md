@@ -8,12 +8,12 @@ The homelab was built on a Windows laptop running an Intel Core i7 processor wit
 
 The lab contains three virtual machines. NEXACORE-WS01 serves as the primary target endpoint, NexaCore-DC01 acts as the Domain Controller managing authentication and Active Directory services for the NexaCore domain, and Kali Linux serves as the attacker machine for simulating real world attacks.
 
-| Machine | Role | Host-Only IP | Internal Network IP |
-|---|---|---|---|
-| NEXACORE-WS01 | Primary target endpoint | 192.168.56.30 | 192.168.10.10 |
-| NexaCore-DC01 | Domain Controller | 192.168.56.10 | 192.168.10.1 |
-| Kali Linux | Attacker machine | N/A | 192.168.10.20 |
-| Host Laptop | Splunk SIEM | 192.168.56.1 | N/A |
+| Machine | Role | OS | Host-Only IP | Internal Network IP |
+| --- | --- | --- | --- | --- |
+| NEXACORE-WS01 | Primary target endpoint | Windows Server 2019 | 192.168.56.30 | 192.168.10.10 |
+| NexaCore-DC01 | Domain Controller | Windows Server 2019 | 192.168.56.10 | 192.168.10.1 |
+| Kali Linux | Attacker machine | Kali Linux 2025.4 | N/A | 192.168.10.20 |
+| Host Laptop | Splunk SIEM | Windows 10 | 192.168.56.1 | N/A |
 
 ## Network Configuration
 
