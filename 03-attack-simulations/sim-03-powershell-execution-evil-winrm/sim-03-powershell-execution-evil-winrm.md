@@ -58,17 +58,16 @@ The objective of this simulation was to demonstrate how an attacker leverages cr
 ​```
 Kali Linux (192.168.10.20)
     |
-    | Step 0 — Password added to wordlist
-    | Step 1 — SMB brute force via NetExec (port 445)
-    |           Discovers valid Administrator credential
+    | SMB brute force via NetExec (port 445)
+    | Discovers valid Administrator credential
     |
-    | Step 2 — Evil-WinRM connection (port 5985)
+    | Evil-WinRM connection (port 5985)
     v
 NEXACORE-WS01 (192.168.10.10)
     |
     | wsmprovhost.exe spawns remote PowerShell session
-    | Step 3 — Attacker runs whoami, hostname, ipconfig,
-    |           net user, Get-Process
+    | Attacker runs whoami, hostname, ipconfig,
+    | net user, Get-Process
     |
     | Windows Security Log — Event ID 4624 (network logon)
     | PowerShell Operational Log — Event ID 4104 (script block)
@@ -88,9 +87,7 @@ Splunk Enterprise (192.168.56.1) — centralised log monitoring
 
 ---
 
-## Attack Steps
-
-### Step 0 — Update Wordlist with Target Password
+## Attack Preparation
 
 To simulate a realistic brute force scenario where the attacker eventually discovers the correct credential, the Administrator password was appended to the wordlist before launching the attack.
 
@@ -98,11 +95,11 @@ To simulate a realistic brute force scenario where the attacker eventually disco
 echo '<password>' >> ~/passwords.txt
 ​```
 
-This ensured the wordlist contained the correct password alongside common weak passwords, reflecting a real world scenario where an attacker uses an enriched wordlist based on prior intelligence about the target organisation.
-
-Expected output: The password is appended to the end of passwords.txt and will be attempted last during the brute force attack.
+This ensured the wordlist contained the correct password alongside common weak passwords, reflecting a real world scenario where an attacker uses an enriched wordlist built from prior intelligence about the target organisation. The attack itself begins once the brute force is launched.
 
 ---
+
+## Attack Steps
 
 ### Step 1 — Verify Credential via SMB Brute Force
 
