@@ -55,25 +55,28 @@ The objective of this simulation was to demonstrate how an attacker leverages cr
 
 ## Attack Flow Architecture
 
-```
+​```
 Kali Linux (192.168.10.20)
     |
-    | SMB brute force — NetExec (port 445)
-    | Discovers Administrator:@Nexacore2026
+    | Step 0 — Password added to wordlist
+    | Step 1 — SMB brute force via NetExec (port 445)
+    |           Discovers valid Administrator credential
     |
-    | Evil-WinRM connection (port 5985)
-    ↓
+    | Step 2 — Evil-WinRM connection (port 5985)
+    v
 NEXACORE-WS01 (192.168.10.10)
     |
-    | wsmprovhost.exe spawns PowerShell session
-    | Attacker runs whoami, hostname, ipconfig, net user, Get-Process
+    | wsmprovhost.exe spawns remote PowerShell session
+    | Step 3 — Attacker runs whoami, hostname, ipconfig,
+    |           net user, Get-Process
     |
     | Windows Security Log — Event ID 4624 (network logon)
     | PowerShell Operational Log — Event ID 4104 (script block)
     | Sysmon Operational Log — Event ID 1 (process creation)
-    ↓
+    v
 Splunk Enterprise (192.168.56.1) — centralised log monitoring
-```
+​```
+
 ---
 
 ## Tools Used
@@ -87,15 +90,29 @@ Splunk Enterprise (192.168.56.1) — centralised log monitoring
 
 ## Attack Steps
 
+### Step 0 — Update Wordlist with Target Password
+
+To simulate a realistic brute force scenario where the attacker eventually discovers the correct credential, the Administrator password was appended to the wordlist before launching the attack.
+
+​```bash
+echo '<password>' >> ~/passwords.txt
+​```
+
+This ensured the wordlist contained the correct password alongside common weak passwords, reflecting a real world scenario where an attacker uses an enriched wordlist based on prior intelligence about the target organisation.
+
+Expected output: The password is appended to the end of passwords.txt and will be attempted last during the brute force attack.
+
+---
+
 ### Step 1 — Verify Credential via SMB Brute Force
 
-Credentials obtained during SIM-01 were verified using NetExec against the SMB service on NEXACORE-WS01. NetExec cycled through the wordlist attempting authentication for each password until the correct credential was identified.
+Credentials were verified using NetExec against the SMB service on NEXACORE-WS01. NetExec cycled through the wordlist attempting authentication for each password until the correct credential was identified.
 
-```bash
+​```bash
 nxc smb 192.168.10.10 -u Administrator -p ~/passwords.txt
-```
+​```
 
-Expected output: All incorrect passwords return STATUS_LOGON_FAILURE. The correct password returns a [+] result with (Pwn3d!) confirming Administrator access.
+Expected output: All incorrect passwords return STATUS_LOGON_FAILURE. The correct password returns a [+] result with (Pwn3d!) confirming Administrator access with local administrator privileges.
 
 ![NXC Brute Force Credential Discovery](screenshots/sim-03-nxc-bruteforce-credential-discovery.png)
 
@@ -105,13 +122,13 @@ Expected output: All incorrect passwords return STATUS_LOGON_FAILURE. The correc
 
 Using the verified Administrator credential, the attacker connected to WinRM port 5985 on NEXACORE-WS01 using Evil-WinRM, establishing an interactive remote PowerShell session.
 
-```bash
-evil-winrm -i 192.168.10.10 -u Administrator -p '@Nexacore2026'
-```
+​```bash
+evil-winrm -i 192.168.10.10 -u Administrator -p '<password>'
+​```
 
 Expected output: Evil-WinRM establishes connection and presents an interactive PowerShell prompt running as Administrator on NEXACORE-WS01.
 
-![Evil-WinRM Shell Access](screenshots/sim-03-evil-winrm-shell-commands.png)
+![Evil-WinRM Connection](screenshots/sim-03-evil-winrm-connection.png)
 
 ---
 
@@ -119,13 +136,13 @@ Expected output: Evil-WinRM establishes connection and presents an interactive P
 
 From within the remote PowerShell session, the attacker executed reconnaissance commands to enumerate the target environment and identify further attack opportunities.
 
-```powershell
+​```powershell
 whoami
 hostname
 ipconfig
 net user
 Get-Process
-```
+​```
 
 | Command | Purpose |
 |---|---|
@@ -143,11 +160,11 @@ Expected output: Each command returns system information confirming the attacker
 
 ## Outcome
 
-The attack succeeded without interruption. The attacker established a fully interactive remote PowerShell session on NEXACORE-WS01 using legitimate Windows Remote Management functionality abused with stolen credentials. All reconnaissance commands executed successfully and returned sensitive system information.
+The attack succeeded without interruption. The attacker established a fully interactive remote PowerShell session on NEXACORE-WS01 using legitimate Windows Remote Management functionality abused with stolen credentials. All reconnaissance commands executed successfully and returned sensitive system information including network configuration, user accounts, and running processes.
 
 Windows Script Block Logging captured every command executed inside the session as Event ID 4104. Sysmon recorded all spawned processes with wsmprovhost.exe as the parent process as Event ID 1. The network logon was recorded as Event ID 4624 Logon Type 3 with source IP 192.168.10.20 confirming the attacker origin.
 
-In a hardened environment this attack would have been prevented by disabling WinRM where not required, restricting WinRM access to authorised management IPs only, and enforcing an account lockout policy to block brute force credential discovery.
+In a hardened environment this attack would have been prevented by disabling WinRM where not required, restricting WinRM access to authorised management IP addresses only, and enforcing an account lockout policy to block brute force credential discovery.
 
 ---
 
