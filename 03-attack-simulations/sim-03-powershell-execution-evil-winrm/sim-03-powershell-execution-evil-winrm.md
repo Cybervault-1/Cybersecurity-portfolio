@@ -58,16 +58,17 @@ The objective of this simulation was to demonstrate how an attacker leverages cr
 ​```
 Kali Linux (192.168.10.20)
     |
-    | SMB brute force via NetExec (port 445)
-    | Discovers valid Administrator credential
+    | Step 1 — Password added to wordlist
+    | Step 2 — SMB brute force via NetExec (port 445)
+    |           Discovers valid Administrator credential
     |
-    | Evil-WinRM connection (port 5985)
+    | Step 3 — Evil-WinRM connection (port 5985)
     v
 NEXACORE-WS01 (192.168.10.10)
     |
     | wsmprovhost.exe spawns remote PowerShell session
-    | Attacker runs whoami, hostname, ipconfig,
-    | net user, Get-Process
+    | Step 3 — Attacker runs whoami, hostname, ipconfig,
+    |           net user, Get-Process
     |
     | Windows Security Log — Event ID 4624 (network logon)
     | PowerShell Operational Log — Event ID 4104 (script block)
@@ -87,23 +88,25 @@ Splunk Enterprise (192.168.56.1) — centralised log monitoring
 
 ---
 
-## Attack Preparation
+## Attack Steps
 
-To simulate a realistic brute force scenario where the attacker eventually discovers the correct credential, the Administrator password was appended to the wordlist before launching the attack.
+### Step 1 — Update Wordlist with Target Password
+
+Prior to launching the attack, the Administrator password was added to passwords.txt to reflect a scenario where an attacker enriches their wordlist with credentials gathered from prior intelligence on the target organisation.
 
 ​```bash
 echo '<password>' >> ~/passwords.txt
 ​```
 
-This ensured the wordlist contained the correct password alongside common weak passwords, reflecting a real world scenario where an attacker uses an enriched wordlist built from prior intelligence about the target organisation. The attack itself begins once the brute force is launched.
+This ensured the wordlist contained the correct password alongside common weak passwords, reflecting a real world scenario where an attacker uses an enriched wordlist based on prior intelligence about the target organisation.
+
+Expected output: The password is appended to the end of passwords.txt and will be attempted last during the brute force attack.
 
 ---
 
-## Attack Steps
+### Step 2 — Verify Credential via SMB Brute Force
 
-### Step 1 — Verify Credential via SMB Brute Force
-
-Credentials were verified using NetExec against the SMB service on NEXACORE-WS01. NetExec cycled through the wordlist attempting authentication for each password until the correct credential was identified.
+Credentials were verified using NetExec against the SMB service on NEXACORE-WS01. NetExec cycled through the passwords.txt attempting authentication for each password until the correct credential was identified.
 
 ​```bash
 nxc smb 192.168.10.10 -u Administrator -p ~/passwords.txt
@@ -115,7 +118,7 @@ Expected output: All incorrect passwords return STATUS_LOGON_FAILURE. The correc
 
 ---
 
-### Step 2 — Establish Remote PowerShell Session via Evil-WinRM
+### Step 3 — Establish Remote PowerShell Session via Evil-WinRM
 
 Using the verified Administrator credential, the attacker connected to WinRM port 5985 on NEXACORE-WS01 using Evil-WinRM, establishing an interactive remote PowerShell session.
 
