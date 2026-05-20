@@ -26,6 +26,7 @@ Splunk Enterprise serves as the central SIEM, collecting logs from all machines 
 | [SMB Brute Force](03-attack-simulations/sim-01-smb-brute-force/README.md) | [DET-01](04-detections/detection-01-brute-force/README.md) | [IR-001](05-incident-reports/IR-001-smb-brute-force/README.md) | [DASH-01](06-dashboards/dashboard-01-brute-force-detection/README.md) | T1110.001 — Password Guessing | Completed |
 | [Nmap Reconnaissance](03-attack-simulations/sim-02-nmap-reconnaissance/README.md) | [DET-02](04-detections/detection-02-nmap-reconnaissance/README.md) | [IR-002](05-incident-reports/IR-002-nmap-reconnaissance/README.md) | N/A | T1046 — Network Service Discovery | Completed |
 | [PowerShell Execution via Evil-WinRM](03-attack-simulations/sim-03-powershell-execution-evil-winrm/README.md) | [DET-03](04-detections/detection-03-powershell-execution-evil-winrm/README.md) | [IR-003](05-incident-reports/IR-003-powershell-execution-evil-winrm/README.md) | [DASH-02](06-dashboards/dashboard-02-powershell-execution-winrm-abuse/README.md) | T1059.001 — PowerShell | Completed |
+| [Persistence via Scheduled Task](03-attack-simulations/sim-04-persistence-scheduled-task/README.md) | [DET-04](04-detections/detection-04-persistence-scheduled-task/README.md) | [IR-004](05-incident-reports/IR-004-persistence-scheduled-task/README.md) | N/A | T1053.005 — Scheduled Task/Job: Scheduled Task | Completed |
 
 ---
 
