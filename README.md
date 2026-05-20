@@ -1,4 +1,9 @@
 # Cybersecurity Portfolio
+[![SOC Analyst](https://img.shields.io/badge/Role-SOC_Analyst-blue?style=flat)](https://github.com/Cybervault-1/Cybersecurity-portfolio)
+[![Splunk](https://img.shields.io/badge/Splunk-SIEM-black?style=flat&logo=splunk&logoColor=white)](https://www.splunk.com)
+[![Kali Linux](https://img.shields.io/badge/Kali_Linux-Attacker-557C94?style=flat&logo=kalilinux&logoColor=white)](https://www.kali.org)
+[![MITRE ATT&CK](https://img.shields.io/badge/MITRE_ATT%26CK-Mapped-red?style=flat)](https://attack.mitre.org)
+[![Windows Server](https://img.shields.io/badge/Windows_Server-2019-0078D6?style=flat&logo=windows&logoColor=white)](https://www.microsoft.com/en-us/windows-server)
 
 ## About Me
 
