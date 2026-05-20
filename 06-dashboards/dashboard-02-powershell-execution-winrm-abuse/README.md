@@ -8,9 +8,9 @@
 | Date | 19 May 2026 |
 | Author | Adedeji Adetayo |
 | Status | Complete |
-| Linked Simulation | SIM-03 — PowerShell Execution via Evil-WinRM |
-| Linked Detection | DET-03 — PowerShell Execution via Evil-WinRM |
-| Linked Incident Report | IR-003 — PowerShell Execution via Evil-WinRM |
+| Linked Simulation | [SIM-03 — PowerShell Execution via Evil-WinRM](../../03-attack-simulations/sim-03-powershell-execution-evil-winrm/) |
+| Linked Detection | [DET-03 — PowerShell Execution via Evil-WinRM](../../04-detections/detection-03-powershell-execution-evil-winrm/) |
+| Linked Incident Report | [IR-003 — PowerShell Execution via Evil-WinRM](../../05-incident-reports/IR-003-powershell-execution-evil-winrm/) |
 
 ---
 
