@@ -1,54 +1,97 @@
-# SIM-04 — Persistence via Scheduled Task
+# Attack Simulation 04 — Persistence via Scheduled Task
 
-## Overview
+## Simulation Metadata
 
 | Field | Detail |
 |---|---|
-| **Simulation ID** | SIM-04 |
-| **Date** | 2026-05-20 |
-| **Tactic** | Persistence |
-| **Technique** | T1053.005 — Scheduled Task/Job: Scheduled Task |
-| **Attacker Machine** | Kali Linux |
-| **Target Machine** | NEXACORE-WS01 |
-| **Prerequisite** | Active Evil-WinRM session from SIM-03 |
-| **Tool Used** | schtasks.exe (native Windows binary) |
+| Simulation ID | SIM-04 |
+| Date | 20 May 2026 |
+| Author | Adedeji Adetayo |
+| Status | Complete |
+| MITRE Technique | T1053.005 — Scheduled Task/Job: Scheduled Task |
+| Linked Detection | DET-04 — Persistence via Scheduled Task |
+| Linked Incident Report | IR-004 — Persistence via Scheduled Task |
 
 ---
 
-## Attack Narrative
+## Objective
 
-Following successful remote code execution via Evil-WinRM in SIM-03, the attacker established persistence on NEXACORE-WS01 by creating a scheduled task designed to survive system reboots. The task was named NexaCoreUpdater to blend in with legitimate Windows maintenance activity. It was configured to execute a command as SYSTEM on every user logon.
+The objective of this simulation was to demonstrate how an attacker with an active remote session on NEXACORE-WS01 establishes persistence by creating a scheduled task using the native Windows schtasks.exe binary. The simulation generates detectable evidence in Splunk via Windows Event ID 4698 and Sysmon Event ID 1, confirming scheduled task creation through a remote WinRM session.
 
-This simulation represents the fourth stage of the NexaCore attack chain:
+---
 
-| Stage | Simulation | Action |
+## Environment
+
+| Role | Machine | IP Address | OS |
+|---|---|---|---|
+| Attacker | Kali Linux | 192.168.10.20 | Kali Linux 2025.4 |
+| Target | NEXACORE-WS01 | 192.168.10.10 | Windows Server 2019 |
+| Domain Controller | NexaCore-DC01 | 192.168.10.1 | Windows Server 2019 |
+| SIEM | Splunk Enterprise | 192.168.56.1 | Host Machine |
+
+---
+
+## MITRE ATT&CK Mapping
+
+| Field | Detail |
+|---|---|
+| Tactic | Persistence |
+| Technique | Scheduled Task/Job: Scheduled Task |
+| Sub-technique | T1053.005 |
+| Reference | https://attack.mitre.org/techniques/T1053/005/ |
+
+---
+
+## Prerequisites — Security Gaps That Allowed This Attack
+
+| Gap | Detail |
+|---|---|
+| No scheduled task monitoring | No alerting was configured for scheduled task creation events, allowing the attacker to plant persistence without triggering any response |
+| WinRM exposed and accessible | Port 5985 remained open from SIM-03, providing the active session from which the scheduled task was created |
+| No application whitelisting | schtasks.exe was unrestricted, allowing any authenticated user to register tasks that execute arbitrary commands |
+| Excessive account privileges | The Administrator account had unrestricted ability to create SYSTEM-level scheduled tasks with no approval or logging controls in place |
+
+---
+
+## Attack Flow Architecture
+
+    Kali Linux (192.168.10.20)
+        |
+        | Active Evil-WinRM session established in SIM-03
+        | schtasks /create executed inside remote session
+        |
+        v
+    NEXACORE-WS01 (192.168.10.10)
+        |
+        | wsmprovhost.exe spawns schtasks.exe
+        | Scheduled task NexaCoreUpdater registered
+        | Configured to run cmd.exe as SYSTEM on every logon
+        |
+        | Windows Security Log — Event ID 4698 (task created)
+        | Sysmon Operational Log — Event ID 1 (process creation)
+        v
+    Splunk Enterprise (192.168.56.1) — centralised log monitoring
+
+---
+
+## Tools Used
+
+| Tool | Version | Purpose |
 |---|---|---|
-| 1 | SIM-02 | Nmap reconnaissance identifies open ports 445 and 5985 |
-| 2 | SIM-01 | SMB brute force recovers Administrator credential |
-| 3 | SIM-03 | Evil-WinRM session established, reconnaissance performed |
-| 4 | SIM-04 | Scheduled task created for persistent access |
+| Evil-WinRM | v3.9 | Maintain remote PowerShell session on NEXACORE-WS01 |
+| schtasks.exe | Native Windows | Register persistence via scheduled task |
 
 ---
 
-## Prerequisites
-
-- Completed SIM-03 with an active Evil-WinRM session on NEXACORE-WS01
-- Administrator credential recovered from SIM-01
-- Sysmon64 running on NEXACORE-WS01 with Event ID 1 logging enabled
-- Audit policy for Other Object Access Events set to Success
-- Splunk Universal Forwarder configured with renderXml = true for Sysmon log
-
----
-
-## Execution
+## Attack Steps
 
 ### Step 1 — Establish Evil-WinRM Session
 
-The attacker opened an Evil-WinRM session from Kali Linux using the Administrator credential recovered during SIM-01.
+The attacker reopened the Evil-WinRM session from Kali Linux using the Administrator credential recovered during SIM-01.
 
-```bash
-evil-winrm -i 192.168.10.10 -u Administrator -p '@Nexacore2026'
-```
+    evil-winrm -i 192.168.10.10 -u Administrator -p '@Nexacore2026'
+
+Expected output: Evil-WinRM establishes connection and presents an interactive PowerShell prompt running as Administrator on NEXACORE-WS01.
 
 ![Evil-WinRM session established](screenshots/sim04-01-evilwinrm-session.png)
 
@@ -56,11 +99,11 @@ evil-winrm -i 192.168.10.10 -u Administrator -p '@Nexacore2026'
 
 ### Step 2 — Create Scheduled Task
 
-The attacker created a scheduled task named NexaCoreUpdater inside the Evil-WinRM session. The task was configured to run as SYSTEM on every user logon.
+From within the remote session, the attacker created a scheduled task named NexaCoreUpdater. The task name was chosen to appear as a legitimate Windows update component. The task was configured to execute a command as SYSTEM on every user logon.
 
-```powershell
-schtasks /create /tn "NexaCoreUpdater" /tr "cmd.exe /c whoami > C:\Windows\Temp\out.txt" /sc onlogon /ru SYSTEM
-```
+    schtasks /create /tn "NexaCoreUpdater" /tr "cmd.exe /c whoami > C:\Windows\Temp\out.txt" /sc onlogon /ru SYSTEM
+
+Expected output: A success message confirming the scheduled task has been created and registered on NEXACORE-WS01.
 
 ![Scheduled task created successfully](screenshots/sim04-02-schtask-created.png)
 
@@ -68,64 +111,28 @@ schtasks /create /tn "NexaCoreUpdater" /tr "cmd.exe /c whoami > C:\Windows\Temp\
 
 ### Step 3 — Verify Task Creation
 
-The attacker confirmed the task was successfully registered on the system.
+The attacker queried the task scheduler to confirm the task was successfully registered and would survive a reboot.
 
-```powershell
-schtasks /query /tn "NexaCoreUpdater"
-```
+    schtasks /query /tn "NexaCoreUpdater"
+
+Expected output: Task details returned showing NexaCoreUpdater is registered, its trigger set to logon, and its status as ready.
 
 ![Scheduled task query output](screenshots/sim04-03-schtask-query.png)
 
 ---
 
-## Evidence Collected
+## Outcome
 
-### Windows Event ID 4698 — Scheduled Task Created
+The attack succeeded without interruption. The attacker created a scheduled task on NEXACORE-WS01 from within a remote WinRM session using only native Windows tooling. No malware was dropped and no third-party tools were installed on the target machine, making the attack difficult to detect through traditional antivirus approaches.
 
-Windows Security log recorded the task creation event including the task name, author, trigger configuration, and full command embedded in the task definition.
+Windows Security log recorded the task creation as Event ID 4698, capturing the full task definition including the embedded command and trigger configuration. Sysmon recorded the execution of schtasks.exe as Event ID 1, with wsmprovhost.exe identified as the parent process confirming the task was created from within a remote session.
 
-![Event ID 4698 detail pane](screenshots/sim04-04-eventid-4698.png)
-
-![Event ID 4698 task content](screenshots/sim04-04b-eventid-4698-taskcontent.png)
-
-| Field | Value |
-|---|---|
-| Event ID | 4698 |
-| Account Name | Administrator |
-| Account Domain | NEXACORE |
-| Task Name | \NexaCoreUpdater |
-| Author | NEXACORE\Administrator |
-| Trigger | LogonTrigger |
-| Command | cmd.exe /c whoami > C:\Windows\Temp\out.txt |
-| Timestamp | 2026-05-20T18:41:17 |
-
-![Event ID 4698 in Splunk](screenshots/sim04-06-splunk-eventid-4698.png)
+In a hardened environment this attack would have been prevented by monitoring and alerting on scheduled task creation events, restricting WinRM access to authorised management hosts only, and applying least privilege principles to limit which accounts can create SYSTEM-level tasks.
 
 ---
 
-### Sysmon Event ID 1 — Process Creation
+## References
 
-Sysmon recorded the execution of schtasks.exe including the full command line and parent process. The parent process wsmprovhost.exe confirms the task was created from within a WinRM session.
-
-| Field | Value |
-|---|---|
-| Event ID | 1 (Process Creation) |
-| Image | C:\Windows\System32\schtasks.exe |
-| CommandLine | schtasks.exe /create /tn NexaCoreUpdater /tr "cmd.exe /c whoami > C:\Windows\Temp\out.txt" /sc onlogon /ru SYSTEM |
-| ParentImage | C:\Windows\System32\wsmprovhost.exe |
-| User | NEXACORE\Administrator |
-| Computer | NEXACORE-WS01.nexacore.local |
-| Timestamp | 2026-05-20T18:47:19 |
-
-![Sysmon Event ID 1 schtasks process creation](screenshots/sim04-07-splunk-sysmon-eventid1-schtasks.png)
-
----
-
-## MITRE ATT&CK
-
-| Field | Detail |
-|---|---|
-| **Tactic** | Persistence |
-| **Technique** | T1053.005 — Scheduled Task/Job: Scheduled Task |
-| **Tool** | schtasks.exe |
-| **Living off the Land** | Yes — native Windows binary, no malware dropped |
+- Detection write-up: DET-04 — Persistence via Scheduled Task
+- Incident report: IR-004 — Persistence via Scheduled Task
+- MITRE ATT&CK T1053.005: https://attack.mitre.org/techniques/T1053/005/
