@@ -17,7 +17,7 @@
 
 ## Incident Summary
 
-On 19 May 2026 13:58:07 , an unauthorised remote PowerShell session was established on NEXACORE-WS01 by a threat actor operating from 192.168.10.20. The attacker performed an SMB brute force attack against the Administrator account, generating 67 failed logon attempts before successfully authenticating. Using the discovered credentials, the attacker connected to WinRM port 5985 via Evil-WinRM and executed a series of post-exploitation reconnaissance commands inside a remote PowerShell session.
+On 19 May 2026 , an unauthorised remote PowerShell session was established on NEXACORE-WS01 by a threat actor operating from 192.168.10.20. The attacker performed an SMB brute force attack against the Administrator account, generating 67 failed logon attempts before successfully authenticating. Using the discovered credentials, the attacker connected to WinRM port 5985 via Evil-WinRM and executed a series of post-exploitation reconnaissance commands inside a remote PowerShell session.
 
 The attack was detected through Splunk across four independent log sources — Windows Security Log, PowerShell Operational Log, and Sysmon Operational Log. No data exfiltration or persistence mechanisms were identified during the investigation. The incident was contained and remediated.
 
