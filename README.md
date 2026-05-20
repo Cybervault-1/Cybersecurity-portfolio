@@ -25,13 +25,13 @@ Splunk Enterprise serves as the central SIEM, collecting logs from all machines 
 
 ---
 
-## Attack and Detection Coverage
+## Attack, Detection, Incident Report and Dashboard Coverage
 
 | Attack Simulation | MITRE Technique | Detection | Incident Report | Dashboard | Status |
 | --- | --- | --- | --- | --- | --- |
 | [SMB Brute Force](03-attack-simulations/sim-01-smb-brute-force/README.md) | T1110.001 — Password Guessing | [DET-01](04-detections/detection-01-brute-force/README.md) | [IR-001](05-incident-reports/IR-001-smb-brute-force/README.md) | [DASH-01](06-dashboards/dashboard-01-brute-force-detection/README.md) | Completed |
 | [Nmap Reconnaissance](03-attack-simulations/sim-02-nmap-reconnaissance/README.md) | T1046 — Network Service Discovery | [DET-02](04-detections/detection-02-nmap-reconnaissance/README.md) | [IR-002](05-incident-reports/IR-002-nmap-reconnaissance/README.md) | N/A | Completed |
-| [PowerShell Execution via Evil-WinRM](03-attack-simulations/sim-03-powershell-execution-evil-winrm/) | T1059.001 — PowerShell | [DET-03](04-detections/detection-03-powershell-execution-evil-winrm/) | [IR-003](05-incident-reports/IR-003-powershell-execution-evil-winrm/) | [DASH-02](06-dashboards/dashboard-02-powershell-execution-winrm-abuse/README.md) | Completed |
+| [PowerShell Execution via Evil-WinRM](03-attack-simulations/sim-03-powershell-execution-evil-winrm/README.md) | T1059.001 — PowerShell | [DET-03](04-detections/detection-03-powershell-execution-evil-winrm/README.md) | [IR-003](05-incident-reports/IR-003-powershell-execution-evil-winrm/README.md) | [DASH-02](06-dashboards/dashboard-02-powershell-execution-winrm-abuse/README.md) | Completed |
 
 ---
 
