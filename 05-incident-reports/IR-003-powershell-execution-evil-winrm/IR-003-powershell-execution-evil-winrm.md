@@ -5,7 +5,7 @@
 | Field | Detail |
 |---|---|
 | Incident ID | IR-003 |
-| Date Detected | 19 May 2026 at 13:58:07 |
+| Date Detected | 19 May 2026 |
 | Author | Adedeji Adetayo |
 | Status | Resolved |
 | Severity | High |
