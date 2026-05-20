@@ -79,20 +79,6 @@ Lists all PowerShell commands captured by Windows Script Block Logging as Event 
 
 ---
 
-## How to Use This Dashboard
-
-A SOC analyst monitoring this dashboard should investigate immediately when:
-
-- Panel 1 shows a spike in failed logons over a short time period
-- Panel 2 shows a high total of failed logon attempts
-- Panel 3 shows successful logons following failed logon activity
-- Panel 4 shows reconnaissance commands spawned by wsmprovhost.exe
-- Panel 5 shows commands like whoami, ipconfig, net user or Get-Process inside a PowerShell session
-
-The combination of all five panels activating within the same time window constitutes a confirmed WinRM-based attack and requires immediate incident response.
-
----
-
 ## References
 
 - Simulation: SIM-03 — PowerShell Execution via Evil-WinRM
