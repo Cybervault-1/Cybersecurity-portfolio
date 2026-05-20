@@ -11,12 +11,6 @@
 
 ---
 
-## About Me
-
-Aspiring SOC analyst building hands-on experience in threat detection, log analysis, and incident investigation through practical cybersecurity homelab projects.
-
----
-
 ## Lab Overview
 
 The NexaCore SOC Homelab is a fully functional security operations environment built on VirtualBox. It simulates a small enterprise network with a Domain Controller, a target Windows endpoint, and a Kali Linux attacker machine.
@@ -54,17 +48,6 @@ Splunk Enterprise serves as the central SIEM, collecting logs from all machines 
 - Kali Linux
 - Windows Server 2019
 - VirtualBox
-
----
-
-## Skills Demonstrated
-
-- Attack simulation and threat detection
-- Windows event log analysis
-- SIEM log ingestion and SPL querying
-- Incident investigation and reporting
-- Network segmentation and lab architecture design
-- Detection engineering and alert creation
 
 ---
 
@@ -115,23 +98,6 @@ Incident Report
 | Detections | SPL queries and detection logic | [View](04-detections) |
 | Incident Reports | Full IR reports for each simulated attack | [View](05-incident-reports) |
 | Dashboards | Splunk dashboards for real time threat monitoring | [View](06-dashboards) |
-
----
-
-## Certifications
-
-| Certification | Issuer | Status |
-| --- | --- | --- |
-| [Google Cybersecurity Professional Certificate](https://coursera.org/verify/professional-cert/6WSDVPZVYGEM) | Google via Coursera | Completed |
-
----
-
-## Contact
-
-| Platform | Link |
-| --- | --- |
-| LinkedIn | [Adetayo Adedeji](https://www.linkedin.com/in/adetayo-adedeji-473816337/) |
-| Email | Adedejiadetayo33@gmail.com |
 
 ---
 
