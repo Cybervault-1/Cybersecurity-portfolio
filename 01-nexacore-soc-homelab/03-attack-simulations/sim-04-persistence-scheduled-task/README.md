@@ -50,7 +50,7 @@ The attacker opened an Evil-WinRM session from Kali Linux using the Administrato
 evil-winrm -i 192.168.10.10 -u Administrator -p '@Nexacore2026'
 ```
 
-*Screenshot: sim04-01-evilwinrm-session.png*
+![Evil-WinRM session established](screenshots/sim04-01-evilwinrm-session.png)
 
 ---
 
@@ -62,7 +62,7 @@ The attacker created a scheduled task named NexaCoreUpdater inside the Evil-WinR
 schtasks /create /tn "NexaCoreUpdater" /tr "cmd.exe /c whoami > C:\Windows\Temp\out.txt" /sc onlogon /ru SYSTEM
 ```
 
-*Screenshot: sim04-02-schtask-created.png*
+![Scheduled task created successfully](screenshots/sim04-02-schtask-created.png)
 
 ---
 
@@ -74,7 +74,7 @@ The attacker confirmed the task was successfully registered on the system.
 schtasks /query /tn "NexaCoreUpdater"
 ```
 
-*Screenshot: sim04-03-schtask-query.png*
+![Scheduled task query output](screenshots/sim04-03-schtask-query.png)
 
 ---
 
@@ -84,8 +84,9 @@ schtasks /query /tn "NexaCoreUpdater"
 
 Windows Security log recorded the task creation event including the task name, author, trigger configuration, and full command embedded in the task definition.
 
-*Screenshot: sim04-04-eventid-4698.png*
-*Screenshot: sim04-04b-eventid-4698-taskcontent.png*
+![Event ID 4698 detail pane](screenshots/sim04-04-eventid-4698.png)
+
+![Event ID 4698 task content](screenshots/sim04-04b-eventid-4698-taskcontent.png)
 
 | Field | Value |
 |---|---|
@@ -98,7 +99,7 @@ Windows Security log recorded the task creation event including the task name, a
 | Command | cmd.exe /c whoami > C:\Windows\Temp\out.txt |
 | Timestamp | 2026-05-20T18:41:17 |
 
-*Screenshot: sim04-06-splunk-eventid-4698.png*
+![Event ID 4698 in Splunk](screenshots/sim04-06-splunk-eventid-4698.png)
 
 ---
 
@@ -116,7 +117,7 @@ Sysmon recorded the execution of schtasks.exe including the full command line an
 | Computer | NEXACORE-WS01.nexacore.local |
 | Timestamp | 2026-05-20T18:47:19 |
 
-*Screenshot: sim04-07-splunk-sysmon-eventid1-schtasks.png*
+![Sysmon Event ID 1 schtasks process creation](screenshots/sim04-07-splunk-sysmon-eventid1-schtasks.png)
 
 ---
 
