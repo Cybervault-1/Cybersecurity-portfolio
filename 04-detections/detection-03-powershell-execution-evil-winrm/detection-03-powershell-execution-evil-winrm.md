@@ -75,7 +75,7 @@ Following the failed attempts, a successful logon was recorded as Event ID 4624 
     | table _time, host, EventCode, Account_Name, Logon_Type, Source_Network_Address
     | sort _time
 
-![Successful Logon After Brute Force](screenshots/detection-03-event-4624-successful-logon-after-bruteforce.png)
+![Successful Logon After Brute Force](screenshots/sim-03-event-4624-winrm-logon.png)
 
 ---
 
