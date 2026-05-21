@@ -23,7 +23,7 @@ Aspiring SOC analyst building hands-on experience in threat detection, log analy
 
 | Project | Description | Status |
 |---|---|---|
-| [NexaCore SOC Homelab](01-nexacore-soc-homelab/) | A fully functional SOC environment simulating five real world attacks across the full kill chain — reconnaissance, initial access, execution, persistence, and credential access — with detection engineering and incident response documentation in Splunk | Completed |
+| [NexaCore SOC Homelab](01-nexacore-soc-homelab/) | A fully functional SOC environment simulating five real world attacks across the full kill chain — reconnaissance, initial access, execution, persistence, and credential access — with detection engineering and incident response documentation in Splunk | In progress |
 
 ---
 
