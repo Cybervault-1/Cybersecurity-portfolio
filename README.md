@@ -23,7 +23,7 @@ Aspiring SOC analyst building hands-on experience in threat detection, log analy
 
 | Project | Description | Status |
 |---|---|---|
-| [NexaCore SOC Homelab](01-nexacore-soc-homelab/) | A fully functional SOC environment simulating real world attacks and detections using Splunk, Sysmon, and Windows logging across an Active Directory network | In Progress |
+| [NexaCore SOC Homelab](01-nexacore-soc-homelab/) | A fully functional SOC environment simulating five real world attacks across the full kill chain — reconnaissance, initial access, execution, persistence, and credential access — with detection engineering and incident response documentation in Splunk | Completed |
 
 ---
 
@@ -34,6 +34,8 @@ Aspiring SOC analyst building hands-on experience in threat detection, log analy
 - Attack simulation and incident investigation
 - Detection engineering and alert creation
 - Windows event log analysis
+- Active Directory security and Kerberos abuse detection
+- Sysmon configuration and analysis
 - Network segmentation and lab architecture design
 
 ---
