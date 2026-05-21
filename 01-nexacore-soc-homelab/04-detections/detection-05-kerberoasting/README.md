@@ -50,9 +50,9 @@ The objective of this detection was to identify evidence of Kerberoasting activi
 
 ---
 
-## Detection 1 — RC4 Encrypted Service Ticket Requests
+## Detection — RC4 Encrypted Service Ticket Request for Service Account
 
-The strongest single indicator of Kerberoasting is a Kerberos service ticket request encrypted with RC4-HMAC (Ticket Encryption Type 0x17). Modern Windows defaults to AES encryption (0x12) for service tickets. RC4 requests are either from legacy systems or from attackers explicitly requesting RC4 to ease offline cracking. Any RC4 ticket request warrants investigation.
+The strongest single indicator of Kerberoasting is a Kerberos service ticket request encrypted with RC4-HMAC (Ticket Encryption Type 0x17) targeting an account with a Service Principal Name. Modern Windows defaults to AES encryption (0x12) for service tickets. RC4 requests are either from legacy systems or from attackers explicitly requesting RC4 to ease offline cracking. A single RC4 ticket request against a service account warrants immediate investigation.
 
     index=* source="WinEventLog:Security" EventCode=4769 Ticket_Encryption_Type="0x17"
     | table _time, Account_Name, Service_Name, Ticket_Encryption_Type, Client_Address
@@ -62,28 +62,22 @@ The strongest single indicator of Kerberoasting is a Kerberos service ticket req
 
 ---
 
-## Detection 2 — Bulk Service Ticket Requests from Single Source
+## Additional Hunting Queries
 
-A defining characteristic of Kerberoasting is bulk enumeration. Attackers request tickets for every service account with an SPN in rapid succession, often producing dozens of Event ID 4769 entries within seconds. Normal users request tickets for specific services they need, spread across normal working hours. This query identifies accounts requesting more than five RC4 tickets from the same source — a strong behavioural signal of Kerberoasting.
+These queries are recommended for ongoing threat hunting in production environments. They were not triggered in this lab because only one service account was targeted, but they are essential at scale.
+
+**Query for bulk TGS requests — identifies attackers enumerating multiple service accounts in rapid succession:**
 
     index=* source="WinEventLog:Security" EventCode=4769 Ticket_Encryption_Type="0x17"
     | stats count by Account_Name, Client_Address
     | where count > 5
     | sort -count
 
-![Bulk RC4 ticket requests from single source](screenshots/sim05-06-splunk-event-4769-kerberoast.png)
-
----
-
-## Detection 3 — Service Account Tickets Requested for Known Service Accounts
-
-This query focuses on RC4 ticket requests specifically targeting accounts with the svc_ naming convention. In environments where service accounts follow a naming standard, attackers requesting tickets for these accounts is highly abnormal. Normal users do not request Kerberos tickets directly for service accounts — they interact with the services those accounts run.
+**Query for tickets targeting service accounts by naming convention — adapt the Service_Name pattern to your environment:**
 
     index=* source="WinEventLog:Security" EventCode=4769 Service_Name="svc_*" Ticket_Encryption_Type="0x17"
     | table _time, Account_Name, Service_Name, Ticket_Encryption_Type, Client_Address
     | sort -_time
-
-![Service ticket requested for svc_sql service account](screenshots/sim05-06-splunk-event-4769-kerberoast.png)
 
 ---
 
