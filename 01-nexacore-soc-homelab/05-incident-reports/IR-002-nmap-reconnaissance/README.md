@@ -1,153 +1,136 @@
-# Incident Report — IR-002: Nmap Reconnaissance
+# Incident Response Report 002 — Nmap Reconnaissance
 
 ## Incident Metadata
 
 | Field | Detail |
-| --- | --- |
+|---|---|
 | Incident ID | IR-002 |
-| Date | 18 May 2026 |
-| Analyst | Adedeji Adetayo |
-| Severity | Medium |
+| Date Detected | 18 May 2026 |
+| Author | Adedeji Adetayo |
 | Status | Resolved |
-| MITRE ATT&CK | T1046 — Network Service Discovery |
+| Severity | Medium |
+| MITRE Technique | T1046 — Network Service Discovery |
 | Linked Simulation | [SIM-02 — Nmap Reconnaissance](../../03-attack-simulations/sim-02-nmap-reconnaissance/README.md) |
 | Linked Detection | [DET-02 — Nmap Reconnaissance](../../04-detections/detection-02-nmap-reconnaissance/README.md) |
 
 ---
 
-## Executive Summary
+## Incident Summary
 
-On 18 May 2026 an unauthorised machine at 192.168.10.20 performed a network port scan against the NexaCore workstation NEXACORE-WS01 using Nmap. The scan targeted the first 1000 ports and completed in under 10 seconds. Three open ports were discovered. No data was accessed and no systems were compromised. The scan was detected through Splunk monitoring using Windows Filtering Platform Event ID 5156 connection logs, the source was identified and the incident was investigated and resolved.
+On 18 May 2026, an unauthorised network port scan was conducted against NEXACORE-WS01 from an external machine operating at 192.168.10.20. The scan covered ports 1 through 1000 and completed within 11 seconds, generating 37 inbound connection events captured by the Windows Filtering Platform. Three open ports were identified during the scan: 135, 139 and 445.
+
+The activity was detected through Splunk monitoring of Windows Filtering Platform Event ID 5156 logs. No data was accessed and no systems were compromised. The reconnaissance directly preceded a subsequent SMB brute force attack documented in IR-001, demonstrating a clear attack progression from discovery to exploitation.
 
 ---
 
-## Incident Details
+## Severity Assessment
 
-| Field | Detail |
-| --- | --- |
-| Incident ID | IR-002 |
-| Date and Time | 18 May 2026, 16:49:10 to 16:49:21 UTC |
-| Attack Type | Network Port Scan |
-| MITRE ATT&CK | T1046 — Network Service Discovery |
+| Factor | Detail |
+|---|---|
+| Severity | Medium |
+| Affected Machine | NEXACORE-WS01 |
+| Attack Vector | Network — TCP ports 1 to 1000 |
 | Attacker IP | 192.168.10.20 |
-| Attacker Machine | KALI |
-| Target Machine | NEXACORE-WS01 |
-| Target IP | 192.168.10.10 |
-| Ports Scanned | 1 to 1000 |
-| Open Ports Found | 135, 139, 445 |
-| Total Connection Events | 37 |
+| Tool Used | Nmap version 7.99 |
+| Privilege Level Obtained | None |
+| Data Accessed | None |
 | Systems Compromised | None |
+| Follow-up Activity | SMB brute force attack against discovered port 445 (IR-001) |
 
 ---
 
-## Timeline of Events
+## Environment
 
-| Time (UTC) | Event |
-| --- | --- |
-| 16:49:10.135 | First inbound connection event recorded on NEXACORE-WS01 from 192.168.10.20 |
-| 16:49:10.148 | Second connection event |
-| 16:49:10.155 | Third connection event |
-| 16:49:11.853 | Fourth connection event |
-| 16:49:17.353 | Continued scanning activity across multiple ports |
-| 16:49:21 | Final connection event recorded — scan complete |
-| Post-scan | All 37 Event ID 5156 entries forwarded to Splunk via Universal Forwarder |
-| Post-scan | Scanning pattern detected through DET-02 threshold detection |
-| Post-scan | Source IP identified, investigation completed, incident resolved |
+| Role | Machine | IP Address | OS |
+|---|---|---|---|
+| Attacker | Kali Linux | 192.168.10.20 | Kali Linux 2025.4 |
+| Target | NEXACORE-WS01 | 192.168.10.10 | Windows Server 2019 |
+| Domain Controller | NexaCore-DC01 | 192.168.10.1 | Windows Server 2019 |
+| SIEM | Splunk Enterprise | 192.168.56.1 | Host Machine |
 
 ---
 
-## Affected Systems
+## Attack Timeline
 
-| Machine | Role | Impact |
-| --- | --- | --- |
-| NEXACORE-WS01 | Primary target endpoint | Scanned but not compromised |
-| NexaCore-DC01 | Domain Controller | Not targeted |
-| Splunk Enterprise | SIEM | Successfully detected the scan |
-
----
-
-## Attack Description
-
-The attacker used Nmap version 7.99 running on Kali Linux to scan NEXACORE-WS01 for open ports and running services. Nmap (Network Mapper) is a free open source tool used for network discovery and security auditing. When used with the `-sV` flag it probes each open port and attempts to identify the exact service and version running on it.
-
-The scan targeted all ports from 1 to 1000 and completed in 9.36 seconds. This speed is characteristic of automated scanning rather than manual probing. The Windows Filtering Platform on NEXACORE-WS01 recorded every inbound connection permitted by the firewall as an Event ID 5156 entry, generating 37 log entries during the scan window.
+| Time | Event |
+|---|---|
+| 16:49:10 | First inbound connection from 192.168.10.20 recorded on NEXACORE-WS01 |
+| 16:49:10 — 16:49:21 | 37 inbound connection events recorded across multiple ports |
+| 16:49:21 | Final connection event — scan completed |
+| Post-scan | All Event ID 5156 entries forwarded to Splunk via Universal Forwarder |
+| Post-scan | Scanning pattern identified through DET-02 threshold detection |
+| Post-scan | Source IP confirmed, investigation completed, incident resolved |
 
 ---
 
-## Detection
+## Detection Evidence
 
-The scan was detected in Splunk through the DET-02 detection which monitors Windows Filtering Platform connection events for unusual inbound connection activity. The detection groups all connection events by source IP and surfaces any IP generating significantly more connections than normal infrastructure machines.
-
-The following query was used to identify the scanning activity:
-
-```
-index=main EventCode=5156 earliest=-24h | stats count by src_ip | sort -count
-```
-
-The query returned 192.168.10.20 with 37 connection events, standing out clearly against normal infrastructure traffic from known internal IPs. The concentration of events within a 10 second window confirmed automated scanning activity.
-
-The following screenshot shows the detection query result with 192.168.10.20 standing out among all source IPs:
-
-![Detection Results](screenshots/01-nmap-recon-splunk-detection-5156.png)
+| Source | Event ID | Observation |
+|---|---|---|
+| Windows Filtering Platform | 5156 | 37 inbound connection events from 192.168.10.20 within 11 seconds |
+| Windows Filtering Platform | 5156 | 31 of the 37 connection attempts targeted port 445 (SMB) |
+| Windows Filtering Platform | 5156 | 3 connection attempts targeted port 135 (RPC) |
+| Windows Filtering Platform | 5156 | 3 connection attempts targeted port 139 (NetBIOS) |
 
 ---
 
-## Investigation Findings
+## Containment Actions
 
-The port distribution was examined to determine which services were probed and how many times each port was hit. The following query was used to break down the connection events by source IP and destination port:
+The following actions were taken immediately upon detection to stop the active scan and prevent further reconnaissance:
 
-```
-index=main EventCode=5156 earliest=-24h | stats count by src_ip, dest_port | sort -count | head 20
-```
-
-The results confirmed that 192.168.10.20 focused the majority of its connection attempts on port 445, the SMB service, which is consistent with Nmap performing service version detection on a Windows target.
-
-| Port | Service | Connection Count | Significance |
-| --- | --- | --- | --- |
-| 445 | Microsoft SMB | 31 | Primary target — SMB is commonly exploited for lateral movement and credential attacks |
-| 135 | Microsoft RPC | 3 | Remote procedure call service used for Windows management |
-| 139 | Microsoft NetBIOS | 3 | Legacy Windows networking service |
-
-The concentration of probes on port 445 is significant. This is the same port targeted in IR-001 where a brute force attack was launched against the administrator account over SMB. The reconnaissance documented in this report directly preceded that attack, forming a realistic attack chain from discovery to exploitation.
-
-The following screenshot shows the port distribution for all source IPs, with 192.168.10.20 visible hitting ports 445, 135 and 139:
-
-![Port Distribution](screenshots/02-nmap-recon-ports-summary.png)
+- Blocked source IP 192.168.10.20 at the network firewall to terminate all inbound connections from the attacker machine
+- Reviewed all active connections on NEXACORE-WS01 to confirm no follow-up activity beyond the initial scan
+- Notified the security team to begin investigation of the source
 
 ---
 
-## Root Cause
+## Eradication Actions
 
-The scan was possible due to two gaps in the network security configuration.
+The following actions were taken to verify the machine was clean and no follow-up activity occurred:
 
-**Unrestricted network access:** Port 445 and other Windows services on NEXACORE-WS01 were reachable from the attacker machine without any firewall restriction. In a properly segmented network an unknown machine would not be able to reach internal workstation ports.
-
-**No network-level scan detection:** No automated alert was configured to detect port scanning activity before this incident. Detection relied on post-scan log analysis rather than real-time alerting.
+- Reviewed Sysmon process creation logs on NEXACORE-WS01 — no malicious process execution identified
+- Verified no inbound authentication attempts followed the scan
+- Confirmed no data was accessed and no services on the discovered ports were exploited during the scan window
 
 ---
 
-## Remediation Actions Taken
+## Recovery Actions
 
-**Splunk detection configured:** The DET-02 detection is now active in Splunk, monitoring Event ID 5156 connection logs and surfacing any source IP generating an abnormal volume of inbound connections.
+The following actions were taken to restore normal operations securely:
 
-**Firewall restriction recommended:** Access to Windows services including ports 135, 139 and 445 on NEXACORE-WS01 should be restricted to only machines that have a legitimate business reason to connect to them. An unknown Kali Linux machine should have no access to these ports.
+- Verified NEXACORE-WS01 was operating normally with no signs of compromise
+- Confirmed all network services were functioning as expected
+- Maintained continued monitoring through the DET-02 detection rule
 
-**Network segmentation recommended:** The attacker machine at 192.168.10.20 was able to reach the internal workstation network freely. Proper network segmentation would isolate untrusted machines and prevent unrestricted access to internal endpoints.
+---
+
+## Remediation Recommendations
+
+| Recommendation | Priority |
+|---|---|
+| Implement network segmentation to isolate untrusted machines from internal endpoints | Critical |
+| Restrict inbound access to ports 135, 139 and 445 on NEXACORE-WS01 using Windows Firewall rules | Critical |
+| Deploy a Splunk alert for source IPs generating high volumes of Event ID 5156 connection logs in a short time window | High |
+| Disable SMBv1 and ensure SMB signing is enforced across all endpoints | High |
+| Conduct regular audits of open ports and exposed services on all endpoints | Medium |
+| Deploy an intrusion detection system to identify scanning activity in real time | Medium |
 
 ---
 
 ## Lessons Learned
 
-Reconnaissance does not cause immediate damage but it provides an attacker with a map of the environment that directly enables the next phase of an attack. In this case the scan revealed port 445 open on NEXACORE-WS01, which the attacker then targeted in a brute force attack documented in IR-001.
+The scan succeeded because no network segmentation or firewall restrictions were in place to prevent the attacker machine from reaching internal workstation ports. An unknown Kali Linux machine should not have had unrestricted access to ports 135, 139 and 445 on NEXACORE-WS01.
 
-Detecting reconnaissance early gives a defender the opportunity to investigate and respond before exploitation begins. The DET-02 detection now provides automated visibility into scanning activity, closing the gap that allowed this reconnaissance to go undetected in real time.
+The detection was successful because Windows Filtering Platform logging was operational on NEXACORE-WS01 and forwarding to Splunk. The volume of connection events from a single source IP within a short time window provided a clear signature of automated scanning activity.
+
+The reconnaissance directly enabled the SMB brute force attack documented in IR-001. Detecting reconnaissance activity early provides a critical opportunity to investigate and block the source before exploitation begins.
 
 ---
 
 ## References
 
-- [Attack Simulation SIM-02](../../03-attack-simulations/sim-02-nmap-reconnaissance/README.md)
-- [Detection DET-02](../../04-detections/detection-02-nmap-reconnaissance/README.md)
-- [Related Incident IR-001](../../05-incident-reports/IR-001-smb-brute-force/README.md)
-- [MITRE ATT&CK T1046](https://attack.mitre.org/techniques/T1046/)
-- [Microsoft Event ID 5156](https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-5156)
+- Simulation: [SIM-02 — Nmap Reconnaissance](../../03-attack-simulations/sim-02-nmap-reconnaissance/README.md)
+- Detection: [DET-02 — Nmap Reconnaissance](../../04-detections/detection-02-nmap-reconnaissance/README.md)
+- Related Incident: [IR-001 — SMB Brute Force](../../05-incident-reports/IR-001-smb-brute-force/README.md)
+- MITRE ATT&CK T1046: https://attack.mitre.org/techniques/T1046/
+- Microsoft Event ID 5156: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-5156
