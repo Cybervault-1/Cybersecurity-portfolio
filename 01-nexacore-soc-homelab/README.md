@@ -18,7 +18,6 @@ The NexaCore SOC Homelab is a fully functional security operations environment b
 Splunk Enterprise serves as the central SIEM, collecting logs from all machines and providing real time visibility into attack activity. The lab follows a complete SOC workflow: build the environment, simulate attacks, detect them in Splunk, investigate the evidence, and document findings in structured incident reports.
 
 ---
-
 ## Attack, Detection, Incident Report and Dashboard Coverage
 
 | Attack Simulation | Detection | Incident Report | Dashboard | MITRE Technique | Status |
@@ -27,6 +26,7 @@ Splunk Enterprise serves as the central SIEM, collecting logs from all machines 
 | [Nmap Reconnaissance](03-attack-simulations/sim-02-nmap-reconnaissance/README.md) | [DET-02](04-detections/detection-02-nmap-reconnaissance/README.md) | [IR-002](05-incident-reports/IR-002-nmap-reconnaissance/README.md) | N/A | T1046 — Network Service Discovery | Completed |
 | [PowerShell Execution via Evil-WinRM](03-attack-simulations/sim-03-powershell-execution-evil-winrm/README.md) | [DET-03](04-detections/detection-03-powershell-execution-evil-winrm/README.md) | [IR-003](05-incident-reports/IR-003-powershell-execution-evil-winrm/README.md) | [DASH-02](06-dashboards/dashboard-02-powershell-execution-winrm-abuse/README.md) | T1059.001 — PowerShell | Completed |
 | [Persistence via Scheduled Task](03-attack-simulations/sim-04-persistence-scheduled-task/README.md) | [DET-04](04-detections/detection-04-persistence-scheduled-task/README.md) | [IR-004](05-incident-reports/IR-004-persistence-scheduled-task/README.md) | N/A | T1053.005 — Scheduled Task/Job: Scheduled Task | Completed |
+| [Kerberoasting](03-attack-simulations/sim-05-kerberoasting/README.md) | [DET-05](04-detections/detection-05-kerberoasting/README.md) | [IR-005](05-incident-reports/IR-005-kerberoasting/README.md) | N/A | T1558.003 — Steal or Forge Kerberos Tickets: Kerberoasting | Completed |
 
 ---
 
