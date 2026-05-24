@@ -30,6 +30,13 @@ Splunk Enterprise serves as the central SIEM, collecting logs from all machines 
 
 ---
 
+## Threat Hunting Coverage
+
+| Hunt ID | Hunt Name | Outcome | MITRE Technique | Status |
+|---|---|---|---|---|
+| [HUNT-01](07-threat-hunting/hunt-01-lolbin-abuse/README.md) | LOLBin Abuse via Scheduled Task Persistence | Confirmed Malicious Activity + Detection Gap Identified | T1053.005, T1218 | Complete |
+---
+
 ## Lab Architecture
 
 | Machine | Role | OS | RAM | Adapter 1 | Adapter 2 | Internal IP |
@@ -99,7 +106,7 @@ Incident Report
 | Detections | SPL queries and detection logic | [View](04-detections) |
 | Incident Reports | Full IR reports for each simulated attack | [View](05-incident-reports) |
 | Dashboards | Splunk dashboards for real time threat monitoring | [View](06-dashboards) |
-
+| Threat Hunting | Proactive hunt investigations with findings and detection improvements | [View](07-threat-hunting) |
 ---
 
 ## Status
