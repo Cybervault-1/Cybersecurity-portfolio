@@ -6,7 +6,7 @@
 |---|---|
 | Rule ID | CR-02 |
 | Rule Name | Task Scheduler Spawning Shell Process |
-| Author | Adedeji Adetayo |
+| Analyst | Adedeji Adetayo |
 | Created | 2026-05-26 |
 | Status | Active |
 | Severity | High |

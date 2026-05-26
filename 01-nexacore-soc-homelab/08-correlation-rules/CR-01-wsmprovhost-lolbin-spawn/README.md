@@ -2,8 +2,11 @@
 
 ## Rule Metadata
 
+| Field | Detail |
+|---|---|
 | Rule ID | CR-01 |
 | Rule Name | WinRM Session Spawning LOLBin |
+| Analyst | Adedeji Adetayo |
 | Created | 2026-05-26 |
 | Status | Active |
 | Severity | High |
