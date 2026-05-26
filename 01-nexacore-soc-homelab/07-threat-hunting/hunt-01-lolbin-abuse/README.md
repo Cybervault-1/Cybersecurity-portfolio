@@ -6,7 +6,7 @@
 |---|---|
 | Hunt ID | HUNT-01 |
 | Hunt Name | LOLBin Abuse via Scheduled Task Persistence |
-| Analyst | [Your Name] |
+| Analyst | Adedeji Adetayo |
 | Date | 2026-05-24 |
 | Status | Complete |
 | Outcome | Confirmed Malicious Activity + Detection Gap Identified |
