@@ -18,6 +18,7 @@ The NexaCore SOC Homelab is a fully functional security operations environment b
 Splunk Enterprise serves as the central SIEM, collecting logs from all machines and providing real time visibility into attack activity. The lab follows a complete SOC workflow: build the environment, simulate attacks, detect them in Splunk, investigate the evidence, and document findings in structured incident reports.
 
 ---
+
 ## Attack, Detection, Incident Report and Dashboard Coverage
 
 | Attack Simulation | Detection | Incident Report | Dashboard | MITRE Technique | Status |
@@ -35,6 +36,16 @@ Splunk Enterprise serves as the central SIEM, collecting logs from all machines 
 | Hunt ID | Hunt Name | Outcome | MITRE Technique | Status |
 |---|---|---|---|---|
 | [HUNT-01](07-threat-hunting/hunt-01-lolbin-abuse/README.md) | LOLBin Abuse via Scheduled Task Persistence | Confirmed Malicious Activity + Detection Gap Identified | T1053.005, T1218 | Complete |
+
+---
+
+## Correlation Rules Coverage
+
+| Rule ID | Rule Name | Severity | Source Hunt | Status |
+|---|---|---|---|---|
+| [CR-01](08-correlation-rules/CR-01-wsmprovhost-lolbin-spawn/README.md) | WinRM Session Spawning LOLBin | High | HUNT-01 | Active |
+| [CR-02](08-correlation-rules/CR-02-taskscheduler-shell-spawn/README.md) | Task Scheduler Spawning Shell Process | High | HUNT-01 | Active |
+
 ---
 
 ## Lab Architecture
@@ -107,8 +118,10 @@ Incident Report
 | Incident Reports | Full IR reports for each simulated attack | [View](05-incident-reports) |
 | Dashboards | Splunk dashboards for real time threat monitoring | [View](06-dashboards) |
 | Threat Hunting | Proactive hunt investigations with findings and detection improvements | [View](07-threat-hunting) |
+| Correlation Rules | Automated detection rules derived from threat hunt findings | [View](08-correlation-rules) |
+
 ---
 
 ## Status
 
-Project currently under active development with ongoing attack simulations, detection engineering, and incident response scenarios.
+Project under active development. Attack simulations, detections, and incident reports complete. Threat hunting and correlation rules ongoing with proactive investigations feeding automated detection logic.
