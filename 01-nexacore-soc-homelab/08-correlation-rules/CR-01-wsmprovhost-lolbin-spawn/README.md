@@ -30,6 +30,12 @@ Detect any instance of wsmprovhost.exe spawning a known Living Off the Land Bina
 
 ---
 
+## Why This Rule Exists
+
+This rule was derived from HUNT-01 findings. During a proactive threat hunt on NEXACORE-WS01, wsmprovhost.exe was observed spawning schtasks.exe to create a scheduled persistence task running as NT AUTHORITY\SYSTEM. No alert existed for this behaviour at the time of the hunt. The malicious scheduled task survived on the endpoint for four days undetected before being discovered. This rule ensures the same behaviour is automatically detected going forward.
+
+---
+
 ## Detection Logic
 
 ```
@@ -42,36 +48,34 @@ index=main source="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" EventCod
 
 ---
 
-## Why This Rule Exists
-
-This rule was derived from HUNT-01 findings. During the hunt, wsmprovhost.exe was observed spawning schtasks.exe to create a scheduled persistence task running as NT AUTHORITY\SYSTEM. No alert existed for this behaviour at the time of the hunt. The task survived on the endpoint for four days undetected before being discovered through proactive hunting.
-
----
-
 ## Detection Source
 
-| Source | Event Code | Field Used |
+| Source | Event Code | Fields Used |
 |---|---|---|
-| XmlWinEventLog:Microsoft-Windows-Sysmon/Operational | 1 | ParentImage, Image, CommandLine |
+| XmlWinEventLog:Microsoft-Windows-Sysmon/Operational | 1 | ParentImage, Image, CommandLine, User, host |
 
 ---
 
 ## Alert Configuration
 
+This rule is configured as a scheduled alert in Splunk Enterprise running on the NexaCore SOC Homelab.
+
 | Field | Value |
 |---|---|
 | Schedule | Every 1 hour |
 | Time Window | Last 1 hour |
-| Trigger Condition | Results greater than 0 |
+| Trigger Condition | Number of results greater than 0 |
+| Trigger | Once per scheduled run |
+| Action | Add to Triggered Alerts |
 | Severity | High |
 
-> Note: Scheduled alerting requires Splunk Enterprise or Developer license. Rule logic validated on Splunk Free. Alert configuration pending developer license installation.
+![CR-01 Alert Configured](screenshots/CR-01-alert-configured.png)
 
 ---
 
-## Evidence — Rule Validation
+## Rule Validation
 
-The rule was validated against real attacker activity generated during SIM-04. wsmprovhost.exe spawned schtasks.exe with a persistence command running as SYSTEM.
+The rule was validated against real attacker activity generated during SIM-04. wsmprovhost.exe spawned schtasks.exe with a full persistence command creating a scheduled task running as NT AUTHORITY\SYSTEM. The rule returned the correct event confirming detection logic is working as expected.
 
 ![CR-01 Validation](screenshots/CR-01-wsmprovhost-lolbin-detection.png)
 
@@ -81,16 +85,16 @@ The rule was validated against real attacker activity generated during SIM-04. w
 
 | Indicator | Significance |
 |---|---|
-| wsmprovhost.exe as ParentImage | Active WinRM remote session |
-| schtasks.exe as Image | Persistence mechanism being created |
+| wsmprovhost.exe as ParentImage | Active WinRM remote session in progress |
+| schtasks.exe as Image | Persistence mechanism being created remotely |
 | /ru SYSTEM in CommandLine | Task configured for highest privilege |
-| NT AUTHORITY\SYSTEM as User | Full system access |
+| NT AUTHORITY\SYSTEM as User | Full system access obtained |
 
 ---
 
 ## False Positive Considerations
 
-Low false positive rate. wsmprovhost.exe spawning LOLBins has no legitimate administrative justification. Legitimate remote administration via WinRM would spawn approved management tools, not shells or LOLBins.
+Low false positive rate. wsmprovhost.exe spawning LOLBins has no legitimate administrative justification. Legitimate remote administration via WinRM spawns approved management tools not interactive shells or task schedulers. Any match on this rule should be treated as high priority until proven otherwise.
 
 ---
 
@@ -98,16 +102,19 @@ Low false positive rate. wsmprovhost.exe spawning LOLBins has no legitimate admi
 
 When this rule fires:
 
-1. Identify the CommandLine — what was the attacker trying to do?
-2. Identify the User — which account was the remote session running under?
-3. Check for scheduled tasks created around the same time — Event ID 4698
-4. Check for lateral movement from the same source IP
-5. Isolate the endpoint if confirmed malicious
+1. Read the CommandLine — identify exactly what command the attacker ran
+2. Identify the User — which account was the remote session operating under
+3. Check the host field — which endpoint was targeted
+4. Search for scheduled tasks created at the same timestamp — Sysmon EventCode 1 with schtasks.exe and /create in CommandLine
+5. Search for the original Evil-WinRM connection — look for network logon Event ID 4624 Logon Type 3 around the same time
+6. Determine if the task still exists on the endpoint — check Windows Task Scheduler
+7. Isolate the endpoint if confirmed malicious
 
 ---
 
 ## References
 
-- HUNT-01 LOLBin Abuse Hunt Documentation
+- HUNT-01 — LOLBin Abuse via Scheduled Task Persistence
 - MITRE ATT&CK T1021.006 — Windows Remote Management
 - MITRE ATT&CK T1218 — System Binary Proxy Execution
+- MITRE ATT&CK T1059 — Command and Scripting Interpreter
