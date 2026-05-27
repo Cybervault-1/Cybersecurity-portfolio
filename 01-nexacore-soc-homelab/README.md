@@ -45,7 +45,7 @@ Splunk Enterprise serves as the central SIEM, collecting logs from all machines 
 |---|---|---|---|---|
 | [CR-01](08-correlation-rules/CR-01-wsmprovhost-lolbin-spawn/README.md) | WinRM Session Spawning LOLBin | High | HUNT-01 | Active |
 | [CR-02](08-correlation-rules/CR-02-taskscheduler-shell-spawn/README.md) | Task Scheduler Spawning Shell Process | High | HUNT-01 | Active |
-
+| [CR-03](08-correlation-rules/CR-03-rc4-kerberoasting-detection/README.md) | RC4 Kerberos Service Ticket Request | High | HUNT-02 | Active |
 ---
 
 ## Lab Architecture
