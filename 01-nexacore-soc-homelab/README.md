@@ -36,7 +36,7 @@ Splunk Enterprise serves as the central SIEM, collecting logs from all machines 
 | Hunt ID | Hunt Name | Outcome | MITRE Technique | Status |
 |---|---|---|---|---|
 | [HUNT-01](07-threat-hunting/hunt-01-lolbin-abuse/README.md) | LOLBin Abuse via Scheduled Task Persistence | Confirmed Malicious Activity + Detection Gap Identified | T1053.005, T1218 | Complete |
-
+| [HUNT-02](07-threat-hunting/hunt-02-kerberoasting-artefacts/README.md) | Kerberoasting Artefact Hunt | Confirmed Malicious Activity — RC4 Kerberoasting Detected | T1558.003 | Complete |
 ---
 
 ## Correlation Rules Coverage
