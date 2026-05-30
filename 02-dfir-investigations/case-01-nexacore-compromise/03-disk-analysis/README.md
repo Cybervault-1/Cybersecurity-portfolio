@@ -26,15 +26,30 @@ Memory forensics reveals the attack in progress. Disk analysis confirms the last
 - **Memory** — what did the attacker do and how did they do it
 - **Disk** — what did the attacker leave behind permanently
 
-A fileless attack does not write malware to disk but the results of the attack — new user accounts, scheduled tasks, event log entries — are permanently recorded on disk.
+A fileless attack does not write malware to disk but the results of the attack — new user accounts, scheduled tasks, and event log entries — are permanently recorded on disk and survive reboots.
 
 ---
 
 ## Finding 1 — Backdoor Account Creation Confirmed In Windows Event Logs
 
-### Investigation Method
+### Purpose
 
-Splunk was queried against Windows Security Event Logs forwarded from NEXACORE-WS01 via the Splunk Universal Forwarder.
+Windows Security Event Logs record every account creation and group membership change. Querying these logs confirms whether the backdoor account created during the fileless attack was successfully written to disk.
+
+### Tool
+
+Splunk Enterprise — querying Windows Security Event Logs forwarded from NEXACORE-WS01 via Splunk Universal Forwarder.
+
+### Event IDs Used
+
+| Event ID | Description |
+|---|---|
+| 4720 | A user account was created |
+| 4732 | A member was added to a security-enabled local group |
+
+### Splunk Query
+
+The following query was run in Splunk to retrieve account creation and group membership events from NEXACORE-WS01:
 
 ```
 index=main host="NEXACORE-WS01" source="WinEventLog:Security" (EventCode=4720 OR EventCode=4732)
@@ -42,16 +57,13 @@ index=main host="NEXACORE-WS01" source="WinEventLog:Security" (EventCode=4720 OR
 | sort -_time
 ```
 
-### Event ID Reference
+The screenshot below shows the Splunk query and the three events returned:
 
-| Event ID | Description |
-|---|---|
-| 4720 | A user account was created |
-| 4732 | A member was added to a security-enabled local group |
+![Account Creation Evidence](../screenshots/dfir-account-creation-splunk.png)
 
 ### Results
 
-Three events returned confirming the complete account creation sequence:
+Three events were returned confirming the complete account creation sequence:
 
 | Time | Event ID | Account | Group | Performed By |
 |---|---|---|---|---|
@@ -61,26 +73,38 @@ Three events returned confirming the complete account creation sequence:
 
 ### Interpretation
 
-The three events occurred within 19 seconds of each other confirming an automated or scripted account creation. The Administrator account was used to create `cybervault` and immediately escalate it to the Administrators group. This matches exactly the decoded payload recovered during memory analysis:
+The three events occurred within 19 seconds confirming an automated or scripted account creation sequence. The Administrator account was used to create `cybervault` and immediately escalate it to the Administrators group. This matches exactly the decoded payload recovered during memory analysis:
 
 ```
 net user cybervault Password$123! /add
 net localgroup administrators cybervault /add
 ```
 
-![Account Creation Evidence](../screenshots/dfir-account-creation-splunk.png)
+The Windows Security Event Log provides permanent disk-based evidence of the account creation — corroborating what was found in memory.
 
 ---
 
 ## Finding 2 — Backdoor Account Confirmed On Endpoint
 
-### Investigation Method
+### Purpose
 
-Direct query of local user accounts on NEXACORE-WS01:
+Directly query the local user account database on NEXACORE-WS01 to confirm the backdoor account exists on disk in the SAM database.
+
+### Tool
+
+Windows Command Prompt on NEXACORE-WS01 — run as Administrator.
+
+### Command
+
+The following command was run directly on NEXACORE-WS01 to list all local user accounts:
 
 ```cmd
 net user
 ```
+
+The screenshot below shows the command output confirming the cybervault account:
+
+![Backdoor User Confirmed](../screenshots/dfir-backdoor-user-confirmed.png)
 
 ### Result
 
@@ -90,21 +114,33 @@ Administrator    cybervault    DefaultAccount
 employee01       Guest         WDAGUtilityAccount
 ```
 
-The `cybervault` account is confirmed as a permanent local user on NEXACORE-WS01. It persists on disk in the SAM database and will survive system reboots.
+### Interpretation
 
-![Backdoor User Confirmed](../screenshots/dfir-backdoor-user-confirmed.png)
+The `cybervault` account is confirmed as a permanent local user on NEXACORE-WS01. It is stored in the SAM database on disk and will survive system reboots. The account was created by the fileless PowerShell payload and provides the attacker with persistent privileged access to the endpoint.
 
 ---
 
 ## Finding 3 — NexaCoreUpdater Scheduled Task Confirmed Active
 
-### Investigation Method
+### Purpose
 
-Direct query of Task Scheduler on NEXACORE-WS01:
+Query the Windows Task Scheduler to confirm the NexaCoreUpdater persistence mechanism created during SIM-04 still exists on disk and remains active.
+
+### Tool
+
+Windows Command Prompt on NEXACORE-WS01 — run as Administrator.
+
+### Command
+
+The following command was run directly on NEXACORE-WS01 to query the specific scheduled task:
 
 ```cmd
 schtasks /query /tn "NexaCoreUpdater" /fo LIST /v
 ```
+
+The screenshot below shows the command output with the full task configuration:
+
+![Scheduled Task Evidence](../screenshots/dfir-scheduled-task-evidence.png)
 
 ### Result
 
@@ -112,7 +148,6 @@ schtasks /query /tn "NexaCoreUpdater" /fo LIST /v
 HostName:       NEXACORE-WS01
 TaskName:       \NexaCoreUpdater
 Status:         Ready
-Logon Mode:     Interactive/Background
 Last Run Time:  2026-05-30 09:35:12
 Last Result:    0
 Author:         NEXACORE\Administrator
@@ -123,30 +158,28 @@ Schedule Type:  At logon time
 
 ### Interpretation
 
-This scheduled task was created on 2026-05-20 via an Evil-WinRM remote session as confirmed by Sysmon EventCode 1 logs showing `wsmprovhost.exe` spawning `schtasks.exe`. Key observations:
+This scheduled task was created on 2026-05-20 via an Evil-WinRM remote session — confirmed by Sysmon EventCode 1 logs showing `wsmprovhost.exe` spawning `schtasks.exe`. Key observations:
 
 - **Run As User: SYSTEM** — highest privilege level on the machine
-- **Schedule Type: At logon time** — executes at every user logon
+- **Schedule Type: At logon time** — executes at every user logon automatically
 - **Last Run Time: 2026-05-30 09:35:12** — executed this morning before this investigation began
-- **Status: Ready** — will execute again at next logon
-- **Age: 10 days** — persisted from May 20 to May 30 without detection
+- **Status: Ready** — will execute again at the next logon
+- **Age: 10 days** — persisted undetected from May 20 to May 30
 
-The task output file `C:\Windows\Temp\out.txt` was confirmed to exist on disk containing the string `nt authority\system` — proof of successful SYSTEM-level execution.
-
-![Scheduled Task Evidence](../screenshots/dfir-scheduled-task-evidence.png)
+The task output file `C:\Windows\Temp\out.txt` was confirmed on disk containing `nt authority\system` — proof of successful SYSTEM-level execution.
 
 ---
 
 ## Disk Analysis Summary
 
-| Finding | Source | Severity |
-|---|---|---|
-| cybervault user account created | Event ID 4720 | Critical |
-| cybervault added to Administrators group | Event ID 4732 | Critical |
-| cybervault account confirmed on endpoint | net user | Critical |
-| NexaCoreUpdater scheduled task active | schtasks query | Critical |
-| Task running as SYSTEM at logon | Task Scheduler | Critical |
-| Task persisted 10 days undetected | Task creation vs investigation date | Critical |
+| Finding | Tool Used | Command | Severity |
+|---|---|---|---|
+| cybervault user account created | Splunk | EventCode=4720 query | Critical |
+| cybervault added to Administrators | Splunk | EventCode=4732 query | Critical |
+| cybervault account on endpoint | Command Prompt | `net user` | Critical |
+| NexaCoreUpdater task active | Command Prompt | `schtasks /query /tn NexaCoreUpdater` | Critical |
+| Task running as SYSTEM at logon | Task Scheduler | Task configuration review | Critical |
+| Task persisted 10 days undetected | Cross-reference | Sysmon logs vs investigation date | Critical |
 
 ---
 
@@ -154,10 +187,10 @@ The task output file `C:\Windows\Temp\out.txt` was confirmed to exist on disk co
 
 | Indicator | Type | Description |
 |---|---|---|
-| cybervault | Local user account | Backdoor account with Administrator privileges |
-| NexaCoreUpdater | Scheduled task | Persistence mechanism running as SYSTEM at logon |
-| C:\Windows\Temp\out.txt | File | Attacker recon output confirming SYSTEM execution |
-| cmd.exe /c whoami | Command | Reconnaissance command executed as SYSTEM |
+| cybervault | Local user account | Backdoor account with Administrator privileges — created by fileless payload |
+| NexaCoreUpdater | Scheduled task | Persistence mechanism running as SYSTEM at every logon |
+| C:\Windows\Temp\out.txt | File | Attacker recon output confirming SYSTEM-level execution |
+| cmd.exe /c whoami | Command | Reconnaissance command executed as SYSTEM via scheduled task |
 
 ---
 
