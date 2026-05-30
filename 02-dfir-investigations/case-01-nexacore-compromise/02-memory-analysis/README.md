@@ -21,24 +21,26 @@ Analyse the memory dump captured from NEXACORE-WS01 to identify attacker artefac
 
 ---
 
-## Tool — Volatility3
+## Tool
 
-Volatility3 is an open source memory forensics framework written in Python. It parses raw memory images and extracts structured information using OS-specific symbol files. It was run on the Kali Linux analyst workstation.
+Volatility3 Framework v2.28.0 was used for all memory analysis. It was installed on the Kali Linux analyst workstation and pointed at the raw memory image file captured by WinPmem.
 
-Installation:
-```bash
+```
 pip3 install volatility3 --break-system-packages
 ```
 
 ---
 
-## System Identification
+## Step 1 — System Identification
 
-The first step was confirming the OS version to ensure Volatility3 loaded the correct symbol file.
+Before running any analysis plugin, the OS version and build number were confirmed to ensure Volatility3 loaded the correct symbol file.
 
-```bash
+**Command:**
+```
 vol -f ~/dfir/nexacore-ws01-dfir.raw windows.info
 ```
+
+**Key Output:**
 
 | Field | Value |
 |---|---|
@@ -49,166 +51,176 @@ vol -f ~/dfir/nexacore-ws01-dfir.raw windows.info
 | System Time | 2026-05-30 08:45:10 UTC |
 | System Root | C:\Windows |
 
+**What This Shows:**
+Volatility3 successfully identified the memory image as Windows 10 build 19041 and loaded the correct symbol file. The system time confirms the exact moment the memory was captured.
+
 ![System Info](../screenshots/volatility-windows-info.png)
 
 ---
 
-## Plugin Execution and Findings
+## Step 2 — Process List
 
-### Plugin 1 — windows.pslist
-
-**Purpose:** List all processes running at time of capture.
-
-```bash
-vol -f ~/dfir/nexacore-ws01-dfir.raw windows.pslist > ~/dfir/analysis/dfir-pslist.txt
+**Command:**
+```
+vol -f ~/dfir/nexacore-ws01-dfir.raw windows.pslist
 ```
 
-**Key Findings:**
+**Key Output:**
 
-| PID | Process | Parent | Significance |
-|---|---|---|---|
-| 4820 | powershell.exe | - | Active PowerShell session — investigation target |
-| 3356 | Sysmon64.exe | 664 | Sysmon monitoring active |
-| 3220 | splunkd.exe | 664 | Splunk forwarder running |
-| 1736 | svchost.exe -s WinRM | 664 | WinRM service active — attack vector open |
-| 7644 | cmd.exe | 1844 | Command Prompt used to run attack commands |
+| PID | Process | Significance |
+|---|---|---|
+| 4820 | powershell.exe | Active PowerShell session — investigation target |
+| 3356 | Sysmon64.exe | Endpoint monitoring active |
+| 3220 | splunkd.exe | Log forwarding active |
+| 1736 | svchost.exe -s WinRM | WinRM service running — attack vector open |
+| 7644 | cmd.exe | Command Prompt used during attack |
+
+**What This Shows:**
+PowerShell was actively running at time of capture. The WinRM service was confirmed active confirming the remote access attack vector remains open on this endpoint.
 
 ---
 
-### Plugin 2 — windows.pstree
+## Step 3 — Process Tree
 
-**Purpose:** Show parent-child process relationships to identify suspicious spawning patterns.
-
-```bash
-vol -f ~/dfir/nexacore-ws01-dfir.raw windows.pstree > ~/dfir/analysis/dfir-pstree.txt
+**Command:**
+```
+vol -f ~/dfir/nexacore-ws01-dfir.raw windows.pstree
 ```
 
-**Key Finding:**
+**Key Output:**
+```
+664  services.exe
+└── 1736  svchost.exe  -k NetworkService -p -s WinRM
+└── 3220  splunkd.exe
+└── 3356  Sysmon64.exe
+1844  explorer.exe
+└── 7644  cmd.exe
+    └── 6040  go-winpmem_amd64  (forensic acquisition tool)
+```
 
-WinRM service confirmed running as svchost.exe with `-s WinRM` flag. This confirms the remote access attack vector was active at time of capture. The full process tree showed a normal Windows hierarchy with no obvious process masquerading.
+**What This Shows:**
+The process tree confirmed a normal Windows hierarchy with no process masquerading. The WinRM service is hosted by svchost.exe under services.exe as expected. The cmd.exe and WinPmem acquisition chain is visible — this is the analyst forensic footprint.
 
 ---
 
-### Plugin 3 — windows.cmdline
+## Step 4 — Command Line Arguments
 
-**Purpose:** Extract command line arguments for each running process.
-
-```bash
-vol -f ~/dfir/nexacore-ws01-dfir.raw windows.cmdline > ~/dfir/analysis/dfir-cmdline.txt
+**Command:**
+```
+vol -f ~/dfir/nexacore-ws01-dfir.raw windows.cmdline
 ```
 
-**Key Finding:**
+**Key Output:**
+```
+4820  powershell.exe  "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+7644  cmd.exe         "C:\Windows\system32\cmd.exe"
+3056  cmd.exe         "C:\Windows\system32\cmd.exe"
+3752  cmd.exe         "C:\Windows\system32\cmd.exe"
+```
 
-Three cmd.exe instances identified with PIDs 7644, 3056, and 3752. Command lines showed basic `cmd.exe` invocation without arguments — meaning the malicious commands were typed interactively inside the shell rather than passed as arguments at launch.
+**What This Shows:**
+Three cmd.exe instances were found. The command lines show basic invocation without arguments — meaning malicious commands were typed interactively inside the shell. The PowerShell process shows no arguments because it was an interactive session with the `$sysinfo` variable loaded in memory.
 
 ---
 
-### Plugin 4 — windows.cmdscan
+## Step 5 — Command History (Critical Finding)
 
-**Purpose:** Extract command history from console buffers in memory — recovers commands typed interactively even after the process exits.
-
-```bash
-vol -f ~/dfir/nexacore-ws01-dfir.raw windows.cmdscan > ~/dfir/analysis/dfir-cmdscan.txt
+**Command:**
+```
+vol -f ~/dfir/nexacore-ws01-dfir.raw windows.cmdscan
 ```
 
-**Critical Finding — Attacker Commands Recovered:**
-
+**Key Output:**
 ```
-powershell -EncodedCommand bgBlAHQAIAB1AHMAZQByACAAYwB5AGIAZQByAHYAYQB1AGwAdAAgAFAAYQBzAHMAdwBvAHIAZAAkADEAMgAzACEAIAAvAGEAZABkAA==
-net localgroup administrators cybervault /add
+PID   Process      Command
+4776  conhost.exe  powershell -EncodedCommand bgBlAHQAIAB1AHMAZQByACAAYwB5AGIAZQByAHYAYQB1AGwAdAAgAFAAYQBzAHMAdwBvAHIAZAAkADEAMgAzACEAIAAvAGEAZABkAA==
+4776  conhost.exe  net localgroup administrators cybervault /add
+6624  conhost.exe  powershell.exe
 ```
 
-The base64 encoded command decodes to:
+**Decoded Payload:**
 ```
 net user cybervault Password$123! /add
 ```
 
-Both commands were recovered from the console history buffer of conhost.exe PID 4776. This confirms the full attack sequence — user creation followed by privilege escalation — was executed on this endpoint.
+**What This Shows:**
+The console history buffer of conhost.exe PID 4776 contained the full attacker command sequence. The encoded PowerShell command was recovered from memory even though the process had already completed and exited. This is the core evidence of the fileless attack — the payload was hidden using base64 encoding to evade detection.
 
-![Command History Evidence](../screenshots/dfir-cmdscan-evidence.png)
-
----
-
-### Plugin 5 — windows.netscan
-
-**Purpose:** List all active and listening network connections at time of capture.
-
-```bash
-vol -f ~/dfir/nexacore-ws01-dfir.raw windows.netscan > ~/dfir/analysis/dfir-netscan.txt
-```
-
-**Key Findings:**
-
-| Finding | Detail | Significance |
-|---|---|---|
-| Port 5985 LISTENING | WinRM HTTP port | Remote access attack vector open |
-| Port 445 LISTENING | SMB port | Additional attack vector open |
-| 192.168.56.30:50130 → 192.168.56.1:9997 ESTABLISHED | splunkd.exe | Splunk actively forwarding logs |
-
-No active connection from the attacker IP was found because the attack was executed locally rather than via a live remote session at time of capture.
-
-![Network Scan Evidence](../screenshots/dfir-netscan-evidence.png)
+![cmdscan Evidence](../screenshots/dfir-cmdscan-evidence.png)
 
 ---
 
-### Plugin 6 — windows.malfind
+## Step 6 — Network Connections
 
-**Purpose:** Identify memory regions with characteristics consistent with injected or dynamically generated code.
-
-```bash
-vol -f ~/dfir/nexacore-ws01-dfir.raw windows.malfind > ~/dfir/analysis/dfir-malfind.txt
+**Command:**
+```
+vol -f ~/dfir/nexacore-ws01-dfir.raw windows.netscan
 ```
 
-**Critical Finding — Suspicious Memory Region In PowerShell:**
-
+**Key Output:**
 ```
-PID:         4820
-Process:     powershell.exe
-Address:     0x197fdf20000
-Protection:  PAGE_EXECUTE_READWRITE
-Type:        VaDs
+Protocol  Local Address          Foreign Address       State        PID   Process
+TCPv4     0.0.0.0:5985           0.0.0.0:0             LISTENING    4     System
+TCPv4     0.0.0.0:445            0.0.0.0:0             LISTENING    4     System
+TCPv4     192.168.56.30:50130    192.168.56.1:9997     ESTABLISHED  3220  splunkd.exe
 ```
 
-A memory region marked `PAGE_EXECUTE_READWRITE` in a dynamically allocated area of PowerShell is a strong indicator of fileless code execution. Legitimate code loaded from disk is marked `PAGE_EXECUTE_READ` only. The combined presence of write and execute permissions on a non-file-backed region is consistent with a fileless payload executing in memory.
+**What This Shows:**
+Port 5985 (WinRM) is actively listening on all interfaces — confirming the remote access attack vector remains open. Port 445 (SMB) is also listening. The only established connection is the Splunk Universal Forwarder shipping logs to the SIEM. No active attacker connection was found because the attack was executed locally rather than via a live remote session at time of capture.
 
-![Malfind Evidence](../screenshots/dfir-malfind-evidence.png)
+![netscan Evidence](../screenshots/dfir-netscan-evidence.png)
 
 ---
 
-### Plugin 7 — windows.registry.hashdump
+## Step 7 — Suspicious Memory Regions (Critical Finding)
 
-**Purpose:** Extract Windows password hashes from the SAM database in memory.
-
-```bash
-vol -f ~/dfir/nexacore-ws01-dfir.raw windows.registry.hashdump > ~/dfir/analysis/dfir-hashdump.txt
+**Command:**
+```
+vol -f ~/dfir/nexacore-ws01-dfir.raw windows.malware.malfind
 ```
 
-**Result:** Failed — Hbootkey not valid. The SAM hive was not fully active in memory at time of capture. Hash extraction was not possible from this memory image.
+**Key Output:**
+```
+PID   Process         Address         Protection              Type
+4820  powershell.exe  0x197fdf20000   PAGE_EXECUTE_READWRITE  VaDs
+```
+
+**What This Shows:**
+A memory region in PowerShell PID 4820 was flagged with `PAGE_EXECUTE_READWRITE` protection on a dynamically allocated region not backed by any file on disk. Legitimate code loaded from disk carries `PAGE_EXECUTE_READ` only. The combination of write and execute permissions on a non-file-backed region is a strong indicator of fileless code execution in memory.
+
+![malfind Evidence](../screenshots/dfir-malfind-evidence.png)
 
 ---
 
-### Plugin 8 — windows.registry.hivelist
+## Step 8 — Password Hash Extraction
 
-**Purpose:** List all registry hives present in memory.
-
-```bash
-vol -f ~/dfir/nexacore-ws01-dfir.raw windows.registry.hivelist > ~/dfir/analysis/dfir-hivelist.txt
+**Command:**
+```
+vol -f ~/dfir/nexacore-ws01-dfir.raw windows.registry.hashdump
 ```
 
-**Finding:** SAM hive located at address `0x860802fc8000` but marked as Disabled — confirming why hashdump failed.
+**Result:**
+```
+WARNING: Hbootkey is not valid
+```
+
+**What This Shows:**
+The SAM registry hive was not fully loaded into active memory at time of capture. Password hash extraction was not possible from this memory image. The SAM hive was located at address `0x860802fc8000` but marked as Disabled in the registry hivelist.
 
 ---
 
 ## Memory Analysis Summary
 
-| Finding | Plugin | Severity |
-|---|---|---|
-| Encoded PowerShell command recovered from console buffer | cmdscan | Critical |
-| Privilege escalation command recovered from console buffer | cmdscan | Critical |
-| Suspicious PAGE_EXECUTE_READWRITE region in PowerShell | malfind | High |
-| WinRM port 5985 listening — attack vector open | netscan | High |
-| SMB port 445 listening | netscan | Medium |
-| Multiple cmd.exe instances running | pslist/cmdline | Medium |
+| Step | Plugin | Finding | Severity |
+|---|---|---|---|
+| 1 | windows.info | Windows 10 build 19041 confirmed | Informational |
+| 2 | windows.pslist | PowerShell PID 4820 and WinRM service active | High |
+| 3 | windows.pstree | Normal process hierarchy — no masquerading | Informational |
+| 4 | windows.cmdline | Three cmd.exe instances identified | Medium |
+| 5 | windows.cmdscan | Encoded PowerShell command and privilege escalation recovered | Critical |
+| 6 | windows.netscan | WinRM port 5985 and SMB port 445 listening | High |
+| 7 | windows.malware.malfind | PAGE_EXECUTE_READWRITE region in PowerShell | High |
+| 8 | windows.registry.hashdump | Failed — SAM hive not active in memory | Informational |
 
 ---
 
