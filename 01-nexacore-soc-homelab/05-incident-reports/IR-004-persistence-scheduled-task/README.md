@@ -138,3 +138,4 @@ The combination of Sysmon process parent tracking and Windows Security event log
 - Simulation: SIM-04 — Persistence via Scheduled Task
 - Detection: DET-04 — Persistence via Scheduled Task
 - MITRE ATT&CK T1053.005: https://attack.mitre.org/techniques/T1053/005/
+- NIST SP 800-61 Rev 2: Computer Security Incident Handling Guide — https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-61r2.pdf

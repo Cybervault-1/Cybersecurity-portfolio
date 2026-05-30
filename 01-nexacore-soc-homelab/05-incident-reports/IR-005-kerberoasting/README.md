@@ -138,3 +138,4 @@ The 9 second crack time demonstrates how quickly weak service account passwords 
 - Simulation: SIM-05 — Kerberoasting
 - Detection: DET-05 — Kerberoasting
 - MITRE ATT&CK T1558.003: https://attack.mitre.org/techniques/T1558/003/
+- NIST SP 800-61 Rev 2: Computer Security Incident Handling Guide — https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-61r2.pdf

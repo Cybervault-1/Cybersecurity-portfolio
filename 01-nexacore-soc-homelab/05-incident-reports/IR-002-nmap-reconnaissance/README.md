@@ -134,3 +134,4 @@ The reconnaissance directly enabled the SMB brute force attack documented in IR-
 - Related Incident: [IR-001 — SMB Brute Force](../../05-incident-reports/IR-001-smb-brute-force/README.md)
 - MITRE ATT&CK T1046: https://attack.mitre.org/techniques/T1046/
 - Microsoft Event ID 5156: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-5156
+- NIST SP 800-61 Rev 2: Computer Security Incident Handling Guide — https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-61r2.pdf

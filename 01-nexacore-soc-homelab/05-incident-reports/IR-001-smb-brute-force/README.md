@@ -139,3 +139,4 @@ The attack was directly enabled by the reconnaissance documented in IR-002, wher
 - MITRE ATT&CK T1110.001: https://attack.mitre.org/techniques/T1110/001/
 - Microsoft Event ID 4625: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4625
 - Microsoft Event ID 4624: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/event-4624
+- NIST SP 800-61 Rev 2: Computer Security Incident Handling Guide — https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-61r2.pdf

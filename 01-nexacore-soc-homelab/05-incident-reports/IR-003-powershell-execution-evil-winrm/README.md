@@ -137,3 +137,4 @@ Without Script Block Logging in particular, the specific commands executed by th
 - Detection: DET-03 — PowerShell Execution via Evil-WinRM
 - MITRE ATT&CK T1059.001: https://attack.mitre.org/techniques/T1059/001/
 - MITRE ATT&CK T1021.006: https://attack.mitre.org/techniques/T1021/006/
+- NIST SP 800-61 Rev 2: Computer Security Incident Handling Guide — https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-61r2.pdf
