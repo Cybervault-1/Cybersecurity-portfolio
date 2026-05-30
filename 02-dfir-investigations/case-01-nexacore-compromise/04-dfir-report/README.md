@@ -28,12 +28,11 @@ Both threats were confirmed through live memory forensics using Volatility3 and 
 
 | Time | Event |
 |---|---|
-| 2026-05-20 19:47:12 | wsmprovhost.exe spawned schtasks.exe — NexaCoreUpdater task created via Evil-WinRM session |
-| 2026-05-20 to 2026-05-30 | NexaCoreUpdater task persisted undetected for 10 days |
+| 2026-05-20 19:47:12 | NexaCoreUpdater scheduled task created via Evil-WinRM remote session |
+| 2026-05-20 to 2026-05-30 | Scheduled task persisted undetected for 10 days |
 | 2026-05-30 09:35:12 | NexaCoreUpdater task executed as SYSTEM at user logon |
-| 2026-05-30 16:36:02 | Fileless PowerShell attack executed — cybervault user created |
-| 2026-05-30 16:36:02 | cybervault added to Users group automatically |
-| 2026-05-30 16:36:21 | cybervault added to Administrators group — full system access granted |
+| 2026-05-30 16:36:02 | Fileless PowerShell payload executed — cybervault user created |
+| 2026-05-30 16:36:21 | cybervault added to Administrators group |
 | 2026-05-30 16:46:00 | Memory acquisition initiated using WinPmem |
 | 2026-05-30 16:48:00 | Memory dump completed — 4.83GB captured |
 | 2026-05-30 17:00:00 | Volatility3 analysis commenced on Kali Linux |
@@ -57,8 +56,8 @@ Both threats were confirmed through live memory forensics using Volatility3 and 
 
 | Tactic | Technique | ID | Evidence |
 |---|---|---|---|
-| Execution | Command and Scripting Interpreter: PowerShell | T1059.001 | Encoded PowerShell command found in memory via cmdscan |
-| Defence Evasion | Obfuscated Files or Information | T1027 | Base64 encoded payload used to hide command intent |
+| Execution | Command and Scripting Interpreter: PowerShell | T1059.001 | Encoded PowerShell command recovered from memory |
+| Defence Evasion | Obfuscated Files or Information | T1027 | Base64 encoding used to hide payload |
 | Persistence | Scheduled Task/Job: Scheduled Task | T1053.005 | NexaCoreUpdater task running as SYSTEM at logon |
 | Privilege Escalation | Valid Accounts: Local Accounts | T1078.003 | cybervault added to Administrators group |
 | Persistence | Create Account: Local Account | T1136.001 | cybervault backdoor account created |
@@ -69,7 +68,7 @@ Both threats were confirmed through live memory forensics using Volatility3 and 
 
 This investigation followed the NIST SP 800-86 Guide to Integrating Forensic Techniques into Incident Response and the NIST SP 800-61 Rev 2 Computer Security Incident Handling Guide across three phases:
 
-| Phase | Description | Documentation |
+| Phase | Description | Link |
 |---|---|---|
 | Phase 1 — Acquisition | Live memory capture from NEXACORE-WS01 using WinPmem | [View](../01-acquisition/README.md) |
 | Phase 2 — Memory Analysis | Volatility3 analysis of memory dump | [View](../02-memory-analysis/README.md) |
@@ -77,52 +76,73 @@ This investigation followed the NIST SP 800-86 Guide to Integrating Forensic Tec
 
 ---
 
-## Key Findings Summary
+## Key Findings
 
 ### Finding 1 — Fileless PowerShell Attack Confirmed (Critical)
 
-Volatility3 `windows.cmdscan` recovered the following commands from memory:
+Volatility3 `windows.cmdscan` recovered the attacker command sequence from the console history buffer in memory. The encoded command and its decoded payload confirm a fileless attack where no files were written to disk.
 
+**Commands recovered from memory:**
 ```
 powershell -EncodedCommand bgBlAHQAIAB1AHMAZQByACAAYwB5AGIAZQByAHYAYQB1AGwAdAAgAFAAYQBzAHMAdwBvAHIAZAAkADEAMgAzACEAIAAvAGEAZABkAA==
 net localgroup administrators cybervault /add
 ```
 
-The encoded command decodes to `net user cybervault Password$123! /add`. No files were written to disk. The payload executed entirely in PowerShell memory.
+**Decoded payload:**
+```
+net user cybervault Password$123! /add
+```
 
-![Command History Evidence](../screenshots/dfir-cmdscan-evidence.png)
+Full technical details: [Phase 02 — Memory Analysis](../02-memory-analysis/README.md)
 
 ---
 
 ### Finding 2 — Suspicious Memory Region Confirms Fileless Execution (High)
 
-Volatility3 `windows.malfind` identified a `PAGE_EXECUTE_READWRITE` memory region in PowerShell PID 4820 — consistent with dynamically generated code execution in memory.
+Volatility3 `windows.malware.malfind` identified a `PAGE_EXECUTE_READWRITE` memory region in PowerShell PID 4820 — a dynamically allocated region not backed by any file on disk. This is consistent with fileless code execution directly in memory.
 
-![Malfind Evidence](../screenshots/dfir-malfind-evidence.png)
+Full technical details: [Phase 02 — Memory Analysis](../02-memory-analysis/README.md)
 
 ---
 
 ### Finding 3 — Backdoor Account Created With Administrator Privileges (Critical)
 
-Windows Security Event IDs 4720 and 4732 confirmed the `cybervault` account was created and added to the Administrators group at 16:36 on 2026-05-30.
+Windows Security Event IDs 4720 and 4732 confirmed the `cybervault` account was created and added to the Administrators group at 16:36 on 2026-05-30. The account was directly verified on the endpoint using `net user`.
 
-![Account Creation Evidence](../screenshots/dfir-account-creation-splunk.png)
+**Confirmation:**
+```
+User accounts for \\NEXACORE-WS01:
+Administrator    cybervault    DefaultAccount
+employee01       Guest         WDAGUtilityAccount
+```
+
+Full technical details: [Phase 03 — Disk Analysis](../03-disk-analysis/README.md)
 
 ---
 
 ### Finding 4 — Persistent Scheduled Task Active For 10 Days (Critical)
 
-The `NexaCoreUpdater` scheduled task was found running as SYSTEM at logon. Created on 2026-05-20, it persisted undetected for 10 days and last executed at 09:35 on the day of this investigation.
+The `NexaCoreUpdater` scheduled task was found on disk running as SYSTEM at every logon. Created on 2026-05-20, it persisted undetected for 10 days and last executed at 09:35 on the day of this investigation.
 
-![Scheduled Task Evidence](../screenshots/dfir-scheduled-task-evidence.png)
+**Task configuration:**
+```
+TaskName:      NexaCoreUpdater
+Task To Run:   cmd.exe /c whoami > C:\Windows\Temp\out.txt
+Run As User:   SYSTEM
+Schedule Type: At logon time
+Last Run Time: 2026-05-30 09:35:12
+Status:        Ready
+```
+
+Full technical details: [Phase 03 — Disk Analysis](../03-disk-analysis/README.md)
 
 ---
 
 ### Finding 5 — WinRM Attack Vector Remains Open (High)
 
-Port 5985 confirmed listening on all interfaces — the endpoint remains accessible via Evil-WinRM to any attacker with valid credentials.
+Volatility3 `windows.netscan` confirmed port 5985 listening on all interfaces. The endpoint remains accessible via Evil-WinRM to any attacker with valid credentials.
 
-![Network Scan Evidence](../screenshots/dfir-netscan-evidence.png)
+Full technical details: [Phase 02 — Memory Analysis](../02-memory-analysis/README.md)
 
 ---
 
@@ -145,7 +165,7 @@ Port 5985 confirmed listening on all interfaces — the endpoint remains accessi
 |---|---|
 | Delete cybervault account | `net user cybervault /delete` |
 | Remove NexaCoreUpdater task | `schtasks /delete /tn "NexaCoreUpdater" /f` |
-| Audit all local accounts | Verify no other backdoor accounts |
+| Audit all local accounts | Verify no other backdoor accounts exist |
 | Audit all scheduled tasks | Review every task on NEXACORE-WS01 and DC01 |
 | Review PowerShell Script Block Logs | Identify any additional encoded commands |
 
@@ -155,7 +175,7 @@ Port 5985 confirmed listening on all interfaces — the endpoint remains accessi
 
 | Action | Detail |
 |---|---|
-| Restore from clean backup | Restore NEXACORE-WS01 to pre-compromise state |
+| Restore from clean backup | Restore NEXACORE-WS01 to pre-compromise state if available |
 | Reimage if no clean backup | Full OS reinstall recommended |
 | Reset service account passwords | svc_sql and all accounts with SPNs |
 | Enable PowerShell Constrained Language Mode | Reduces fileless attack effectiveness |
@@ -181,25 +201,20 @@ Port 5985 confirmed listening on all interfaces — the endpoint remains accessi
 | ID | Description | File |
 |---|---|---|
 | E01 | Memory dump captured during active attack | nexacore-ws01-dfir.raw |
-| E02 | Memory acquisition confirmation | dfir-acquisition-complete.png |
-| E03 | Volatility windows.info output | volatility-windows-info.png |
-| E04 | Encoded command in console buffer | dfir-cmdscan-evidence.png |
-| E05 | Suspicious memory region in PowerShell | dfir-malfind-evidence.png |
-| E06 | Active network connections | dfir-netscan-evidence.png |
-| E07 | Backdoor account creation in Splunk | dfir-account-creation-splunk.png |
-| E08 | NexaCoreUpdater scheduled task details | dfir-scheduled-task-evidence.png |
-| E09 | Backdoor user confirmed on endpoint | dfir-backdoor-user-confirmed.png |
+| E02 | Memory acquisition confirmation | [01-acquisition](../01-acquisition/README.md) |
+| E03 | Volatility3 memory analysis findings | [02-memory-analysis](../02-memory-analysis/README.md) |
+| E04 | Windows event log and disk artefact findings | [03-disk-analysis](../03-disk-analysis/README.md) |
 
 ---
 
 ## References
 
-- NIST SP 800-86 — Guide to Integrating Forensic Techniques into Incident Response
-- NIST SP 800-61 Rev 2 — Computer Security Incident Handling Guide
+- NIST SP 800-86 — Guide to Integrating Forensic Techniques into Incident Response — https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-86.pdf
+- NIST SP 800-61 Rev 2 — Computer Security Incident Handling Guide — https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-61r2.pdf
 - MITRE ATT&CK T1059.001 — PowerShell
 - MITRE ATT&CK T1027 — Obfuscated Files or Information
 - MITRE ATT&CK T1053.005 — Scheduled Task
 - MITRE ATT&CK T1078.003 — Valid Accounts: Local Accounts
 - MITRE ATT&CK T1136.001 — Create Account: Local Account
-- Volatility3 Documentation — https://volatility3.readthedocs.io
+- Volatility3 — https://volatility3.readthedocs.io
 - WinPmem — https://github.com/Velocidex/WinPmem
