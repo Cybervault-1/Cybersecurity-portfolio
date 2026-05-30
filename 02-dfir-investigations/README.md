@@ -83,9 +83,9 @@ A formal investigation report is produced documenting the full incident timeline
 
 ## Cases
 
-| Case ID | Report | Acquisition | Memory Analysis | Disk Analysis | Status |
+| Case ID | Acquisition | Memory Analysis | Disk Analysis | Report | Status |
 |---|---|---|---|---|---|
-| DFIR-CASE-01 | [📄 Report](case-01-nexacore-compromise/04-dfir-report/README.md) | [🔍 Phase 1](case-01-nexacore-compromise/01-acquisition/README.md) | [🧠 Phase 2](case-01-nexacore-compromise/02-memory-analysis/README.md) | [💾 Phase 3](case-01-nexacore-compromise/03-disk-analysis/README.md) | ✅ Complete |
+| DFIR-CASE-01 | [🔍 Phase 1](case-01-nexacore-compromise/01-acquisition/README.md) | [🧠 Phase 2](case-01-nexacore-compromise/02-memory-analysis/README.md) | [💾 Phase 3](case-01-nexacore-compromise/03-disk-analysis/README.md) | [📄 Report](case-01-nexacore-compromise/04-dfir-report/README.md) | ✅ Complete |
 
 ---
 
