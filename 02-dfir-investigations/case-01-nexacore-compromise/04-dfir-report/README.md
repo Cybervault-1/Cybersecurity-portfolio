@@ -113,7 +113,9 @@ net user cybervault Password$123! /add
 
 This confirms a fileless attack where the malicious command was obfuscated using base64 encoding and executed entirely in memory.
 
-![Command History Evidence](../../../screenshots/dfir-cmdscan-evidence.png)
+![Command History Evidence](../screenshots/dfir-cmdscan-evidence.png)
+
+---
 
 ### Finding 2 — Suspicious Memory Region In PowerShell
 
@@ -129,13 +131,15 @@ Type:        VaDs
 
 A `PAGE_EXECUTE_READWRITE` protection flag on a dynamically allocated memory region is a strong indicator of fileless code execution. Legitimate code loaded from disk is typically marked `PAGE_EXECUTE_READ` only.
 
-![Malfind Evidence](../../../screenshots/dfir-malfind-evidence.png)
+![Malfind Evidence](../screenshots/dfir-malfind-evidence.png)
+
+---
 
 ### Finding 3 — WinRM Attack Vector Confirmed Open
 
 Volatility3 `windows.netscan` confirmed port 5985 listening on all interfaces under the System process — confirming the WinRM remote access attack vector remains active on this endpoint.
 
-![Network Scan Evidence](../../../screenshots/dfir-netscan-evidence.png)
+![Network Scan Evidence](../screenshots/dfir-netscan-evidence.png)
 
 ---
 
@@ -151,7 +155,9 @@ Splunk query against Windows Security Event Log returned three events confirming
 | 2026-05-30 16:36:02 | 4732 | cybervault added to Users group |
 | 2026-05-30 16:36:21 | 4732 | cybervault added to Administrators group |
 
-![Account Creation Evidence](../../../screenshots/dfir-account-creation-splunk.png)
+![Account Creation Evidence](../screenshots/dfir-account-creation-splunk.png)
+
+---
 
 ### Finding 5 — NexaCoreUpdater Scheduled Task Confirmed Active
 
@@ -168,99 +174,4 @@ Last Run Time: 2026-05-30 09:35:12
 
 This task was created on 2026-05-20 via an Evil-WinRM remote session and persisted undetected for 10 days. It has full SYSTEM privileges and executes at every user logon.
 
-![Scheduled Task Evidence](../../../screenshots/dfir-scheduled-task-evidence.png)
-
----
-
-## Containment Actions
-
-| Priority | Action | Command |
-|---|---|---|
-| Immediate | Isolate NEXACORE-WS01 from network | Disconnect network adapter in VirtualBox |
-| Immediate | Disable cybervault account | `net user cybervault /active:no` |
-| Immediate | Delete NexaCoreUpdater scheduled task | `schtasks /delete /tn "NexaCoreUpdater" /f` |
-| High | Disable WinRM service | `net stop winrm` then set to Disabled |
-| High | Reset Administrator password | Change via Active Directory |
-| High | Block port 5985 on firewall | Windows Firewall inbound rule |
-| High | Block port 445 on firewall | Unless required for business operations |
-
----
-
-## Eradication Actions
-
-| Action | Detail |
-|---|---|
-| Delete cybervault user account | `net user cybervault /delete` |
-| Remove NexaCoreUpdater task | `schtasks /delete /tn "NexaCoreUpdater" /f` |
-| Audit all local user accounts | Verify no other backdoor accounts exist |
-| Audit all scheduled tasks | Review every task on NEXACORE-WS01 and DC01 |
-| Review WinRM access policy | Restrict WinRM to authorised IP addresses only |
-| Scan for additional encoded PowerShell | Review PowerShell Script Block Logs in Splunk |
-
----
-
-## Recovery Actions
-
-| Action | Detail |
-|---|---|
-| Restore from clean backup | If available — restore NEXACORE-WS01 to pre-compromise state |
-| Reimage if no clean backup | Full OS reinstall recommended given SYSTEM level persistence |
-| Reset all service account passwords | svc_sql and any other accounts with SPNs |
-| Enable PowerShell Constrained Language Mode | Reduces effectiveness of fileless attacks |
-| Deploy AppLocker | Restrict execution of unsigned scripts |
-
----
-
-## Recommendations
-
-| Priority | Recommendation |
-|---|---|
-| Critical | Disable WinRM on endpoints that do not require remote management |
-| Critical | Implement PowerShell Script Block Logging and forward to SIEM |
-| High | Deploy scheduled task creation alerting — Sysmon EventCode 1 with schtasks.exe |
-| High | Alert on Event ID 4720 user account creation in real time |
-| High | Alert on Event ID 4732 addition to Administrators group in real time |
-| Medium | Enforce PowerShell execution policy — AllSigned or Constrained |
-| Medium | Implement Just Enough Administration (JEA) for WinRM sessions |
-| Low | Review and harden firewall rules — close unused ports |
-
----
-
-## Tools Used
-
-| Tool | Version | Purpose |
-|---|---|---|
-| WinPmem | v1.0-rc2 | Live memory acquisition from Windows endpoint |
-| Volatility3 | v2.28.0 | Memory dump analysis and artefact extraction |
-| Splunk Enterprise | v9.x | Windows Security event log analysis |
-| Sysmon | v15.20 | Endpoint telemetry and process monitoring |
-
----
-
-## Evidence Index
-
-| ID | Description | File |
-|---|---|---|
-| E01 | Memory dump — captured during active attack | nexacore-ws01-dfir.raw |
-| E02 | Memory acquisition confirmation | dfir-acquisition-complete.png |
-| E03 | Volatility windows.info output | volatility-windows-info.png |
-| E04 | Encoded command found in console buffer | dfir-cmdscan-evidence.png |
-| E05 | Suspicious PAGE_EXECUTE_READWRITE region | dfir-malfind-evidence.png |
-| E06 | Active network connections | dfir-netscan-evidence.png |
-| E07 | Backdoor account creation events in Splunk | dfir-account-creation-splunk.png |
-| E08 | NexaCoreUpdater scheduled task details | dfir-scheduled-task-evidence.png |
-| E09 | Backdoor user confirmed on endpoint | dfir-backdoor-user-confirmed.png |
-
----
-
-## References
-
-- NIST SP 800-86 — Guide to Integrating Forensic Techniques into Incident Response
-- NIST SP 800-61 Rev 2 — Computer Security Incident Handling Guide
-- MITRE ATT&CK T1059.001 — PowerShell
-- MITRE ATT&CK T1027 — Obfuscated Files or Information
-- MITRE ATT&CK T1053.005 — Scheduled Task
-- MITRE ATT&CK T1078.003 — Valid Accounts: Local Accounts
-- MITRE ATT&CK T1136.001 — Create Account: Local Account
-- Volatility3 Documentation — https://volatility3.readthedocs.io
-- WinPmem — https://github.com/Velocidex/WinPmem
+![Scheduled Task Evidence](../screenshots/dfir-sch
