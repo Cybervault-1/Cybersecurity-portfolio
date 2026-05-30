@@ -22,7 +22,7 @@ I do not just follow tutorials. I build environments, simulate attacks, investig
 | 📧 Email | Adedejiadetayo33@gmail.com |
 | 💼 LinkedIn | [Adetayo Adedeji](https://www.linkedin.com/in/adetayo-adedeji-473816337/) |
 | 🎓 Certification | [Google Cybersecurity Professional Certificate](https://coursera.org/verify/professional-cert/6WSDVPZVYGEM) |
-| 📍 Location | Lagos, Nigeria — Available for remote roles worldwide |
+| 📍 Location | Lagos, Available for remote roles worldwide |
 
 ---
 
@@ -43,38 +43,10 @@ I do not just follow tutorials. I build environments, simulate attacks, investig
 
 ## Projects
 
-### 🏠 Project 1 — NexaCore SOC Homelab
-
-A fully functional enterprise-style SOC environment built on VirtualBox with Active Directory, Windows Server 2019, Kali Linux, and Splunk Enterprise as the central SIEM.
-
-**What was built:**
-- 5 real attack simulations mapped to MITRE ATT&CK
-- 5 detection rules with Splunk SPL queries
-- 5 formal incident response reports
-- 2 Splunk dashboards
-- 2 proactive threat hunt investigations
-- 3 automated correlation rules running as scheduled Splunk alerts
-
-**Highlight:** Threat hunting discovered a scheduled task persistence mechanism that survived 4 days undetected, executing as NT AUTHORITY\SYSTEM with no alert firing.
-
-[![View Project](https://img.shields.io/badge/View-NexaCore_SOC_Homelab-blue?style=flat)](01-nexacore-soc-homelab/)
-
----
-
-### 🔍 Project 2 — DFIR Investigations
-
-Hands-on Digital Forensics and Incident Response investigations following NIST SP 800-86 methodology. Each case covers the complete forensic workflow from live memory acquisition to formal reporting.
-
-**What was built:**
-- Live memory acquisition from a compromised Windows endpoint using WinPmem
-- Memory forensics using Volatility3 — recovering fileless attack payloads from RAM
-- Base64 encoded PowerShell command recovered from memory after process exit
-- Disk analysis using Splunk and Windows Task Scheduler
-- Formal DFIR report with full evidence index and remediation
-
-**Highlight:** Fileless PowerShell attack investigated entirely through memory forensics — no malicious files on disk, payload recovered from console buffer in RAM using Volatility3.
-
-[![View Project](https://img.shields.io/badge/View-DFIR_Investigations-blue?style=flat)](02-dfir-investigations/)
+| Project | Description | Status |
+|---|---|---|
+| [NexaCore SOC Homelab](01-nexacore-soc-homelab/) | A fully functional enterprise-style SOC environment simulating five real world attacks across the full kill chain — reconnaissance, initial access, execution, persistence, and credential access — with detection engineering, threat hunting, correlation rules, and incident response documentation in Splunk | Active |
+| [DFIR Investigations](02-dfir-investigations/) | Hands-on Digital Forensics and Incident Response investigations following NIST SP 800-86 methodology — covering live memory acquisition with WinPmem, memory forensics with Volatility3, fileless attack investigation, and formal DFIR reporting | Active |
 
 ---
 
