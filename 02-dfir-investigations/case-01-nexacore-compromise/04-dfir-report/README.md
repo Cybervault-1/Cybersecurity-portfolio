@@ -67,111 +67,139 @@ Both threats were confirmed through live memory forensics using Volatility3 and 
 
 ## Investigation Methodology
 
-This investigation followed the NIST SP 800-86 Guide to Integrating Forensic Techniques into Incident Response and the NIST SP 800-61 Rev 2 Computer Security Incident Handling Guide.
+This investigation followed the NIST SP 800-86 Guide to Integrating Forensic Techniques into Incident Response and the NIST SP 800-61 Rev 2 Computer Security Incident Handling Guide across three phases:
 
-### Phase 1 — Evidence Acquisition
-
-A live memory dump was captured from NEXACORE-WS01 while the attack was in progress using WinPmem v1.0-rc2. The acquisition captured 4,831,838,208 bytes of physical memory in 1 minute 37 seconds. The memory dump file `nexacore-ws01-dfir.raw` was transferred to the analyst workstation for offline analysis.
-
-### Phase 2 — Memory Analysis
-
-Volatility3 Framework v2.28.0 was used to analyse the memory dump. The following plugins were executed:
-
-| Plugin | Purpose | Finding |
+| Phase | Description | Documentation |
 |---|---|---|
-| windows.info | Identify OS version and capture time | Windows 10 build 19041, captured 2026-05-30 08:45:10 |
-| windows.pslist | List all running processes | PowerShell PID 4820 confirmed running |
-| windows.pstree | Show parent-child process relationships | WinRM service confirmed active |
-| windows.cmdline | Extract process command lines | cmd.exe and PowerShell instances identified |
-| windows.cmdscan | Extract console command history | Encoded PowerShell command and net localgroup command found |
-| windows.netscan | List active network connections | WinRM port 5985 listening, SMB port 445 open |
-| windows.malfind | Identify suspicious memory regions | PAGE_EXECUTE_READWRITE region found in PowerShell PID 4820 |
-| windows.registry.hashdump | Extract password hashes | Failed — SAM hive not active in memory |
-| windows.registry.hivelist | List registry hives | SAM hive located but marked Disabled |
-
-### Phase 3 — Disk Analysis
-
-Windows Security event logs were analysed in Splunk and the Task Scheduler was queried directly on the endpoint.
+| Phase 1 — Acquisition | Live memory capture from NEXACORE-WS01 using WinPmem | [View](../01-acquisition/README.md) |
+| Phase 2 — Memory Analysis | Volatility3 analysis of memory dump | [View](../02-memory-analysis/README.md) |
+| Phase 3 — Disk Analysis | Windows event log and scheduled task analysis | [View](../03-disk-analysis/README.md) |
 
 ---
 
-## Memory Forensics Findings
+## Key Findings Summary
 
-### Finding 1 — Encoded PowerShell Command In Memory
+### Finding 1 — Fileless PowerShell Attack Confirmed (Critical)
 
-Volatility3 `windows.cmdscan` recovered the following commands from the console history buffer of conhost.exe PID 4776:
+Volatility3 `windows.cmdscan` recovered the following commands from memory:
 
 ```
 powershell -EncodedCommand bgBlAHQAIAB1AHMAZQByACAAYwB5AGIAZQByAHYAYQB1AGwAdAAgAFAAYQBzAHMAdwBvAHIAZAAkADEAMgAzACEAIAAvAGEAZABkAA==
 net localgroup administrators cybervault /add
 ```
 
-The base64 encoded command decodes to:
-```
-net user cybervault Password$123! /add
-```
-
-This confirms a fileless attack where the malicious command was obfuscated using base64 encoding and executed entirely in memory.
+The encoded command decodes to `net user cybervault Password$123! /add`. No files were written to disk. The payload executed entirely in PowerShell memory.
 
 ![Command History Evidence](../screenshots/dfir-cmdscan-evidence.png)
 
 ---
 
-### Finding 2 — Suspicious Memory Region In PowerShell
+### Finding 2 — Suspicious Memory Region Confirms Fileless Execution (High)
 
-Volatility3 `windows.malfind` identified a memory region in PowerShell PID 4820 with the following characteristics:
-
-```
-PID:         4820
-Process:     powershell.exe
-Address:     0x197fdf20000
-Protection:  PAGE_EXECUTE_READWRITE
-Type:        VaDs
-```
-
-A `PAGE_EXECUTE_READWRITE` protection flag on a dynamically allocated memory region is a strong indicator of fileless code execution. Legitimate code loaded from disk is typically marked `PAGE_EXECUTE_READ` only.
+Volatility3 `windows.malfind` identified a `PAGE_EXECUTE_READWRITE` memory region in PowerShell PID 4820 — consistent with dynamically generated code execution in memory.
 
 ![Malfind Evidence](../screenshots/dfir-malfind-evidence.png)
 
 ---
 
-### Finding 3 — WinRM Attack Vector Confirmed Open
+### Finding 3 — Backdoor Account Created With Administrator Privileges (Critical)
 
-Volatility3 `windows.netscan` confirmed port 5985 listening on all interfaces under the System process — confirming the WinRM remote access attack vector remains active on this endpoint.
-
-![Network Scan Evidence](../screenshots/dfir-netscan-evidence.png)
-
----
-
-## Disk Forensics Findings
-
-### Finding 4 — Backdoor Account Creation Confirmed In Event Logs
-
-Splunk query against Windows Security Event Log returned three events confirming the account creation sequence:
-
-| Time | Event ID | Description |
-|---|---|---|
-| 2026-05-30 16:36:02 | 4720 | User account cybervault created by Administrator |
-| 2026-05-30 16:36:02 | 4732 | cybervault added to Users group |
-| 2026-05-30 16:36:21 | 4732 | cybervault added to Administrators group |
+Windows Security Event IDs 4720 and 4732 confirmed the `cybervault` account was created and added to the Administrators group at 16:36 on 2026-05-30.
 
 ![Account Creation Evidence](../screenshots/dfir-account-creation-splunk.png)
 
 ---
 
-### Finding 5 — NexaCoreUpdater Scheduled Task Confirmed Active
+### Finding 4 — Persistent Scheduled Task Active For 10 Days (Critical)
 
-Direct query of Task Scheduler on NEXACORE-WS01 confirmed the following persistent threat:
+The `NexaCoreUpdater` scheduled task was found running as SYSTEM at logon. Created on 2026-05-20, it persisted undetected for 10 days and last executed at 09:35 on the day of this investigation.
 
-```
-TaskName:      NexaCoreUpdater
-Status:        Ready
-Task To Run:   cmd.exe /c whoami > C:\Windows\Temp\out.txt
-Run As User:   SYSTEM
-Schedule Type: At logon time
-Last Run Time: 2026-05-30 09:35:12
-```
+![Scheduled Task Evidence](../screenshots/dfir-scheduled-task-evidence.png)
 
-This task was created on 2026-05-20 via an Evil-WinRM remote session and persisted undetected for 10 days. It has full SYSTEM privileges and executes at every user logon.
+---
 
-![Scheduled Task Evidence](../screenshots/dfir-sch
+### Finding 5 — WinRM Attack Vector Remains Open (High)
+
+Port 5985 confirmed listening on all interfaces — the endpoint remains accessible via Evil-WinRM to any attacker with valid credentials.
+
+![Network Scan Evidence](../screenshots/dfir-netscan-evidence.png)
+
+---
+
+## Containment Actions
+
+| Priority | Action | Command |
+|---|---|---|
+| Immediate | Isolate NEXACORE-WS01 from network | Disconnect network adapter |
+| Immediate | Disable cybervault account | `net user cybervault /active:no` |
+| Immediate | Delete NexaCoreUpdater task | `schtasks /delete /tn "NexaCoreUpdater" /f` |
+| High | Disable WinRM | `net stop winrm` |
+| High | Reset Administrator password | Change via Active Directory |
+| High | Block port 5985 on firewall | Windows Firewall inbound rule |
+
+---
+
+## Eradication Actions
+
+| Action | Detail |
+|---|---|
+| Delete cybervault account | `net user cybervault /delete` |
+| Remove NexaCoreUpdater task | `schtasks /delete /tn "NexaCoreUpdater" /f` |
+| Audit all local accounts | Verify no other backdoor accounts |
+| Audit all scheduled tasks | Review every task on NEXACORE-WS01 and DC01 |
+| Review PowerShell Script Block Logs | Identify any additional encoded commands |
+
+---
+
+## Recovery Actions
+
+| Action | Detail |
+|---|---|
+| Restore from clean backup | Restore NEXACORE-WS01 to pre-compromise state |
+| Reimage if no clean backup | Full OS reinstall recommended |
+| Reset service account passwords | svc_sql and all accounts with SPNs |
+| Enable PowerShell Constrained Language Mode | Reduces fileless attack effectiveness |
+
+---
+
+## Recommendations
+
+| Priority | Recommendation |
+|---|---|
+| Critical | Disable WinRM on endpoints that do not require remote management |
+| Critical | Implement PowerShell Script Block Logging forwarded to SIEM |
+| High | Alert on Event ID 4720 user account creation in real time |
+| High | Alert on Event ID 4732 addition to Administrators group |
+| High | Alert on scheduled task creation via Sysmon EventCode 1 |
+| Medium | Enforce PowerShell execution policy — AllSigned or Constrained |
+| Low | Review and harden firewall rules |
+
+---
+
+## Evidence Index
+
+| ID | Description | File |
+|---|---|---|
+| E01 | Memory dump captured during active attack | nexacore-ws01-dfir.raw |
+| E02 | Memory acquisition confirmation | dfir-acquisition-complete.png |
+| E03 | Volatility windows.info output | volatility-windows-info.png |
+| E04 | Encoded command in console buffer | dfir-cmdscan-evidence.png |
+| E05 | Suspicious memory region in PowerShell | dfir-malfind-evidence.png |
+| E06 | Active network connections | dfir-netscan-evidence.png |
+| E07 | Backdoor account creation in Splunk | dfir-account-creation-splunk.png |
+| E08 | NexaCoreUpdater scheduled task details | dfir-scheduled-task-evidence.png |
+| E09 | Backdoor user confirmed on endpoint | dfir-backdoor-user-confirmed.png |
+
+---
+
+## References
+
+- NIST SP 800-86 — Guide to Integrating Forensic Techniques into Incident Response
+- NIST SP 800-61 Rev 2 — Computer Security Incident Handling Guide
+- MITRE ATT&CK T1059.001 — PowerShell
+- MITRE ATT&CK T1027 — Obfuscated Files or Information
+- MITRE ATT&CK T1053.005 — Scheduled Task
+- MITRE ATT&CK T1078.003 — Valid Accounts: Local Accounts
+- MITRE ATT&CK T1136.001 — Create Account: Local Account
+- Volatility3 Documentation — https://volatility3.readthedocs.io
+- WinPmem — https://github.com/Velocidex/WinPmem
